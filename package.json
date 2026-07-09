@@ -1,0 +1,26 @@
+{
+  "name": "vmcp-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Virtual MCP gateway: proxies MCP servers to Claude with tool-call telemetry, mocked config-driven identity, and a Carbon dashboard.",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace server",
+    "dev:web": "npm run dev --workspace web",
+    "build": "npm run build --workspace server && npm run build --workspace web",
+    "start": "npm run start --workspace server",
+    "db:generate": "npm run db:generate --workspace server",
+    "db:migrate": "npm run db:migrate --workspace server",
+    "db:seed": "npm run db:seed --workspace server",
+    "db:up": "bash scripts/db.sh up",
+    "db:down": "bash scripts/db.sh down",
+    "e2e": "npm run e2e --workspace server",
+    "call": "npm run call --workspace server --",
+    "populate": "npm run populate --workspace server",
+    "mock-upstream": "npm run mock-upstream --workspace server",
+    "test": "npm run test --workspace server"
+  }
+}

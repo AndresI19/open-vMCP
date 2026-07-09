@@ -1,0 +1,12 @@
+{
+  "servers": [
+    {
+      "slug": "rs-mcp",
+      "name": "RuneScape MCP",
+      "url": "http://localhost:8000/sse",
+      "transport": "sse",
+      "enabled": true,
+      "forwardAuth": false
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+# Postgres for the vMCP gateway. Run: docker compose up -d db
+# (Linux needs Colima running first: `colima start`.)
+services:
+  db:
+    image: postgres:16
+    container_name: vmcp-db
+    environment:
+      POSTGRES_USER: vmcp
+      POSTGRES_PASSWORD: vmcp
+      POSTGRES_DB: vmcp
+    ports:
+      - "5433:5432"
+    volumes:
+      - vmcp_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vmcp -d vmcp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  vmcp_pgdata:
