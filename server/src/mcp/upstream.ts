@@ -24,7 +24,7 @@ export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promis
  */
 export async function connectUpstream(server: ServerRow, bearer?: string): Promise<Client> {
   const client = new Client(
-    { name: "vmcp-gateway", version: "0.1.0" },
+    { name: "open-vmcp", version: "0.1.0" },
     { capabilities: {} },
   );
 

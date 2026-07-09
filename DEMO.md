@@ -4,7 +4,7 @@ Everything runs in Docker (under Colima). Claude reaches RuneScape tools **only*
 gateway, which logs every call to Postgres and streams it to the dashboard.
 
 ```
-Claude Code ──HTTP :8001──▶ vmcp-gateway ──SSE──▶ rs-mcp-server ──▶ RS/OSRS public APIs
+Claude Code ──HTTP :8001──▶ open-vmcp ──SSE──▶ rs-mcp-server ──▶ RS/OSRS public APIs
    (rs-vmcp)                     │ Bearer→user, telemetry
                                  └──▶ vmcp-db (Postgres)
 ```
@@ -13,7 +13,7 @@ Claude Code ──HTTP :8001──▶ vmcp-gateway ──SSE──▶ rs-mcp-ser
 
 ```bash
 docker ps --format '  {{.Names}}  {{.Image}}  {{.Ports}}'
-#   vmcp-gateway    vmcp-gateway:dev    0.0.0.0:8001->8001/tcp
+#   open-vmcp    open-vmcp:dev    0.0.0.0:8001->8001/tcp
 #   rs-mcp-server   rs-mcp-server:dev   0.0.0.0:8000->8000/tcp
 #   vmcp-db         postgres:16         0.0.0.0:5433->5432/tcp
 ```
@@ -22,7 +22,7 @@ Postgres as `vmcp-db:5432` (the `rs-mcp` registry row was seeded to the containe
 
 ## Three surfaces to watch
 
-1. **Gateway log window** (ptyxis): `docker logs -f vmcp-gateway` — shows `[tools/list]` and
+1. **Gateway log window** (ptyxis): `docker logs -f open-vmcp` — shows `[tools/list]` and
    `[tools/call] <server>/<tool> user=<id> status=… <ms>` per call.
 2. **RS-MCP log window** (ptyxis): `docker logs -f rs-mcp-server` — the upstream server executing the
    proxied tool calls (shows `tool_call_end`, cache hits, and the real upstream API fetches).
@@ -73,14 +73,14 @@ curl -s "localhost:8001/api/calls?limit=8"           # your calls, user=andres, 
 
 ```bash
 # logs
-docker logs -f vmcp-gateway
+docker logs -f open-vmcp
 docker logs -f rs-mcp-server
 
 # restart just the gateway (after a rebuild)
-docker rm -f vmcp-gateway && docker build -t vmcp-gateway:dev . && \
-  docker run -d --name vmcp-gateway --network vmcp-net -p 8001:8001 \
+docker rm -f open-vmcp && docker build -t open-vmcp:dev . && \
+  docker run -d --name open-vmcp --network vmcp-net -p 8001:8001 \
     -e DATABASE_URL=postgres://vmcp:vmcp@vmcp-db:5432/vmcp \
-    -e SEED_URL_RS_MCP=http://rs-mcp-server:8000/sse -e PORT=8001 vmcp-gateway:dev
+    -e SEED_URL_RS_MCP=http://rs-mcp-server:8000/sse -e PORT=8001 open-vmcp:dev
 
 # restart RS (run its image with uvicorn straight to stdout — see note below)
 docker rm -f rs-mcp-server && \
@@ -89,7 +89,7 @@ docker rm -f rs-mcp-server && \
     -m uvicorn rs_mcp_server.server:web --host 0.0.0.0 --port 8000
 
 # tear down (keeps the Postgres volume)
-docker rm -f vmcp-gateway rs-mcp-server vmcp-db
+docker rm -f open-vmcp rs-mcp-server vmcp-db
 ```
 
 > **RS logging note:** the `rs-mcp-server` image's normal start script pipes logs through

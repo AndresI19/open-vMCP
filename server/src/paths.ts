@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 // (built). In both cases the repo root is two directories up from here.
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** Absolute path to the vmcp-gateway repo root, independent of the caller's cwd. */
+/** Absolute path to the open-vMCP repo root, independent of the caller's cwd. */
 export const repoRoot = resolve(here, "../../");
 
 /** Absolute path to the config/ directory (override with CONFIG_DIR, relative to root). */
