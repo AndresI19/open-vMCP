@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import {
   Content,
   Header,
+  HeaderGlobalBar,
   HeaderName,
   SideNav,
   SideNavItems,
@@ -26,12 +28,25 @@ const NAV = [
 
 export default function App() {
   const { pathname } = useLocation();
+  // Link back to the platform home page; its URL is provided by the server (HOME_URL env, default "/").
+  const [homeUrl, setHomeUrl] = useState("/");
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}config.json`)
+      .then((r) => r.json())
+      .then((c: { homeUrl?: string }) => setHomeUrl(c.homeUrl || "/"))
+      .catch(() => {});
+  }, []);
   return (
     <>
       <Header aria-label="vMCP Gateway">
         <HeaderName href={import.meta.env.BASE_URL} prefix="vMCP">
           Gateway
         </HeaderName>
+        <HeaderGlobalBar>
+          <a className="cds--header__menu-item" href={homeUrl}>
+            ← Home
+          </a>
+        </HeaderGlobalBar>
       </Header>
 
       <SideNav aria-label="Side navigation" isFixedNav expanded isChildOfHeader={false}>

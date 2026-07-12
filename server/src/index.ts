@@ -30,6 +30,11 @@ app.use("/mcp", identityMiddleware, mcpRouter);
 // Vite `base`), so it serves correctly behind the reverse proxy at /vmcp/ and when hit directly
 // at :8001/vmcp/. The dashboard data API and the mock-token dev helper move under it too.
 const dash = express.Router();
+// Runtime config for the dashboard. HOME_URL (env, default "/") is the link back to the platform
+// home page — configurable per deployment without rebuilding the client.
+dash.get("/config.json", (_req, res) => {
+  res.json({ homeUrl: process.env.HOME_URL || "/" });
+});
 dash.get("/auth/mock-token", (req, res) => {
   const user = String(req.query.user ?? "").trim();
   if (!user) {
