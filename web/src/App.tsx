@@ -29,7 +29,7 @@ export default function App() {
   return (
     <>
       <Header aria-label="vMCP Gateway">
-        <HeaderName href="/" prefix="vMCP">
+        <HeaderName href={import.meta.env.BASE_URL} prefix="vMCP">
           Gateway
         </HeaderName>
       </Header>

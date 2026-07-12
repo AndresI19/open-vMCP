@@ -69,11 +69,16 @@ export interface AggTool {
   enabled: boolean;
 }
 
+// The dashboard is served under import.meta.env.BASE_URL (e.g. '/vmcp/') behind the reverse proxy;
+// every gateway request is prefixed with it so it routes to the backend under the same prefix.
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 async function get<T>(path: string): Promise<T> {
-  const r = await fetch(path);
+  const r = await fetch(BASE + path);
   if (!r.ok) throw new Error(`${path} → ${r.status}`);
   return (await r.json()) as T;
 }
+const send = (path: string, init?: RequestInit): Promise<Response> => fetch(BASE + path, init);
 
 export const api = {
   overview: () => get<Overview>("/api/stats/overview"),
@@ -85,21 +90,21 @@ export const api = {
   mockToken: (user: string) =>
     get<{ user: string; token: string }>(`/auth/mock-token?user=${encodeURIComponent(user)}`),
   createServer: (body: Record<string, unknown>) =>
-    fetch("/api/servers", {
+    send("/api/servers", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     }),
   patchServer: (id: string, body: Record<string, unknown>) =>
-    fetch(`/api/servers/${id}`, {
+    send(`/api/servers/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     }),
-  deleteServer: (id: string) => fetch(`/api/servers/${id}`, { method: "DELETE" }),
+  deleteServer: (id: string) => send(`/api/servers/${id}`, { method: "DELETE" }),
   /** Master switch: enable/disable every registered server in one write. */
   setAllServersEnabled: (enabled: boolean) =>
-    fetch("/api/servers", {
+    send("/api/servers", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ enabled }),
@@ -107,14 +112,14 @@ export const api = {
   server: (id: string) => get<ServerRow>(`/api/servers/${id}`),
   serverTools: (id: string) => get<{ tools: ToolInfo[] }>(`/api/servers/${id}/tools`),
   setToolEnabled: (id: string, tool: string, enabled: boolean) =>
-    fetch(`/api/servers/${id}/tools/${encodeURIComponent(tool)}`, {
+    send(`/api/servers/${id}/tools/${encodeURIComponent(tool)}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ enabled }),
     }),
   /** Master switch: enable/disable many of one server's tools in one write. */
   setServerToolsEnabled: (id: string, tools: string[], enabled: boolean) =>
-    fetch(`/api/servers/${id}/tools`, {
+    send(`/api/servers/${id}/tools`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ enabled, tools }),
