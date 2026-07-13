@@ -5,7 +5,6 @@ import { resolve } from "node:path";
 import { repoRoot } from "./paths.js";
 import { loadAuthConfig } from "./config/load.js";
 import { identityMiddleware, requireAdminForWrites } from "./auth/middleware.js";
-import { mintMockToken } from "./auth/mint.js";
 import { mcpRouter } from "./mcp/router.js";
 import { apiRouter } from "./api/index.js";
 
@@ -33,7 +32,14 @@ app.use((req, res, next) => {
   if (origin && CORS_ORIGINS.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+    // Writes are included now. They used not to be, from when the data API was read-only in public
+    // — but the dashboard and the API live on different origins, so a browser PATCH/POST/DELETE
+    // triggers a CORS preflight, and a preflight that answers "GET, HEAD, OPTIONS" makes the browser
+    // BLOCK the write before it is sent. That silently broke every write from the public dashboard,
+    // the admin's included: the request never reached the server, so the app-layer admin check never
+    // ran and the fetch just threw. CORS is not the authorisation boundary — requireAdminForWrites
+    // is — so allowing the methods here loosens nothing; it just lets the request arrive to be judged.
+    res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, PATCH, DELETE, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.setHeader("Access-Control-Max-Age", "600");
   }
@@ -85,14 +91,10 @@ dash.get("/config.json", (_req, res) => {
     mcpUrl: process.env.MCP_PUBLIC_URL || "",
   });
 });
-dash.get("/auth/mock-token", (req, res) => {
-  const user = String(req.query.user ?? "").trim();
-  if (!user) {
-    res.status(400).json({ error: "provide ?user=<id>" });
-    return;
-  }
-  res.json({ user, token: mintMockToken(user) });
-});
+// The /auth/mock-token endpoint is GONE. It minted an unsigned alg:none token for the pre-auth
+// world; with verification on, that token is rejected, so it could only ever hand out a credential
+// that does not work. Worse, it was a live minter of forgeable-LOOKING tokens with no legitimate
+// caller left. A client now uses the real bearer from platform-auth, which the dashboard holds.
 // The dashboard API had NO authentication whatsoever — its writes were guarded only by an nginx
 // method filter on the public vhost. Identity is resolved here and writes now require an admin; reads
 // stay open, because a dashboard is for looking at.

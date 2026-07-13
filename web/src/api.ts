@@ -1,4 +1,5 @@
-import { authHeaders } from "./auth";
+import { authHeaders, isSignedIn } from "./auth";
+import { notify } from "./notify";
 import { useCallback, useEffect, useState } from "react";
 
 export interface Overview {
@@ -115,7 +116,26 @@ async function get<T>(path: string): Promise<T> {
 const send = async (path: string, init: RequestInit = {}): Promise<Response> => {
   const headers = new Headers(init.headers);
   for (const [k, v] of Object.entries(await authHeaders())) headers.set(k, v);
-  return fetch(BASE + path, { ...init, headers });
+  const res = await fetch(BASE + path, { ...init, headers });
+
+  // The one place every mutation passes through, so the one place to notice a permission failure.
+  // 403 = signed in but not an admin; 401 = not signed in at all. Both used to fail in silence.
+  if (res.status === 403) {
+    notify({
+      kind: "error",
+      title: "Not allowed",
+      subtitle: "Changing the registry needs an admin. You are signed in without that role.",
+    });
+  } else if (res.status === 401) {
+    notify({
+      kind: "error",
+      title: isSignedIn() ? "Session expired" : "Sign in first",
+      subtitle: isSignedIn()
+        ? "Your token has expired — sign in again from the top-right."
+        : "Sign in (top-right) to make changes.",
+    });
+  }
+  return res;
 };
 
 export const api = {
@@ -125,8 +145,6 @@ export const api = {
   servers: () => get<ServerRow[]>("/api/servers"),
   users: () => get<UserRow[]>("/api/users"),
   calls: (limit = 100) => get<CallRow[]>(`/api/calls?limit=${limit}`),
-  mockToken: (user: string) =>
-    get<{ user: string; token: string }>(`/auth/mock-token?user=${encodeURIComponent(user)}`),
   createServer: (body: Record<string, unknown>) =>
     send("/api/servers", {
       method: "POST",
