@@ -83,6 +83,21 @@ export function setApiBase(base: string | undefined): void {
   if (base) BASE = base.replace(/\/$/, "");
 }
 
+// The MCP endpoint we advertise to clients on the Overview page. Same runtime-config reasoning as
+// BASE above: empty means same-origin (`/mcp` behind whatever proxy served this page), and the
+// deployment supplies the public host. It is deliberately NOT the in-cluster Service address — that
+// only resolves for cluster members, and the client reading this string runs outside the cluster.
+let MCP = "";
+
+export function setMcpUrl(url: string | undefined): void {
+  if (url) MCP = url.replace(/\/$/, "");
+}
+
+/** The endpoint an external MCP client should connect to. Absolute in production, same-origin locally. */
+export function mcpEndpoint(): string {
+  return MCP || `${window.location.origin}/mcp`;
+}
+
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(BASE + path);
   if (!r.ok) throw new Error(`${path} → ${r.status}`);

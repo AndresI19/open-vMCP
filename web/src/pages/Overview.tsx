@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Grid, Column, Tile, TextInput, Button, InlineNotification } from "@carbon/react";
 import { LineChart } from "@carbon/charts-react";
 import { ScaleTypes } from "@carbon/charts";
-import { api, usePoll } from "../api";
+import { api, mcpEndpoint, usePoll } from "../api";
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
@@ -65,8 +65,8 @@ export default function Overview() {
       <Tile>
         <h4 style={{ marginBottom: "1rem" }}>Connect a client</h4>
         <p style={{ color: "var(--cds-text-secondary)", marginBottom: "1rem" }}>
-          Point an MCP client at <code>http://localhost:8001/mcp/&lt;slug&gt;</code> and send a
-          bearer token. Mint a mock token for a user below.
+          Point an MCP client at <code>{mcpEndpoint()}/&lt;slug&gt;</code> and send a bearer token.
+          Mint a mock token for a user below.
         </p>
         <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", maxWidth: 520 }}>
           <TextInput

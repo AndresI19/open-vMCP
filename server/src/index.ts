@@ -69,6 +69,20 @@ dash.get("/config.json", (_req, res) => {
     // prefix it is already served from) — the local default. In production this is the API host,
     // so the front end and the back end are separate origins without rebuilding the client.
     apiBase: process.env.VMCP_API_BASE || "",
+    // The MCP endpoint to TELL A CLIENT ABOUT — printed on the Overview page's "Connect a client"
+    // panel. It used to be hardcoded to http://localhost:8001, which is only ever right on the
+    // machine the gateway runs on; every public visitor was handed an address that resolves to
+    // their own laptop.
+    //
+    // It cannot be the in-cluster Service address either (vmcp.platform.svc.cluster.local). That
+    // resolves — but only for cluster members: CoreDNS does not answer outside the cluster, and the
+    // 10.96.x.x Service IP is a virtual address that exists only in the node's routing rules. The
+    // client this string is aimed at (Claude Desktop, an SDK) runs OUTSIDE, so it needs the address
+    // that is actually reachable from there.
+    //
+    // Empty = same-origin, which is correct when the dashboard is reached through the same proxy
+    // that serves /mcp. In production the overlay sets this to the public API host.
+    mcpUrl: process.env.MCP_PUBLIC_URL || "",
   });
 });
 dash.get("/auth/mock-token", (req, res) => {

@@ -25,3 +25,93 @@
   outline: 2px solid #0f62fe;
   outline-offset: -2px;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────
+   Small screens.
+   The dashboard had no media queries at all, and it showed: the side nav is `position: fixed`
+   at 16rem, and Carbon offsets the content to clear it with
+       .cds--side-nav--expanded ~ .cds--content { margin-inline-start: 16rem }
+   With the nav pinned open at every width, that offset applied on a phone too — so two thirds of
+   a 390px viewport was navigation and the page itself started off the right-hand edge.
+   App.tsx now lets Carbon collapse the nav below `lg`. The rules below cover what Carbon does not.
+   ───────────────────────────────────────────────────────────────────────────────────────────── */
+
+/* THE CONTENT OFFSET IS A FUNCTION OF THE VIEWPORT, NOT OF THE NAV'S TOGGLE STATE.
+ *
+ * Carbon only offsets the content through one rule:
+ *     .cds--side-nav--expanded ~ .cds--content { margin-inline-start: 16rem }
+ * — i.e. the content moves aside only while the nav is flagged "expanded". That couples a LAYOUT
+ * fact (there is a 16rem nav permanently occupying the left edge of a desktop) to a UI STATE fact
+ * (someone has the menu open). They are not the same thing, and conflating them breaks one width or
+ * the other: pin `expanded` on and the offset also applies on a phone, pushing the page off-screen;
+ * leave it off and the desktop content slides under an opaque fixed nav that paints over it.
+ *
+ * The nav is `position: fixed`, so it is out of flow and reserves no space of its own. On a desktop
+ * that space has to be reserved for it — unconditionally. Below `lg` the nav is an overlay and
+ * reserves nothing, so the content takes the full width. State does not enter into it.
+ */
+@media (min-width: 66rem) {
+  .cds--content {
+    margin-inline-start: 16rem;
+  }
+}
+
+/* Carbon's `lg` breakpoint. Below it the nav is an overlay, so the content owns the full width. */
+@media (max-width: 65.98rem) {
+  /* Belt and braces. Carbon should not be applying the 16rem offset once the nav is an overlay, but
+     if it ever does, the page slides off-screen and the failure is total rather than cosmetic — so
+     this is stated outright rather than left to an interaction between two of its classes. */
+  .cds--side-nav--expanded ~ .cds--content,
+  .cds--content {
+    margin-inline-start: 0;
+  }
+
+  /* 2rem of padding on each side of a 390px screen spends 16% of the viewport on whitespace. */
+  .cds--content {
+    padding: 1rem;
+  }
+}
+
+/* Nothing may make the page itself scroll sideways. Wide things scroll INSIDE their own box, which
+   keeps the sideways gesture attached to the thing that is actually too wide (a table) rather than
+   to the whole document. */
+body {
+  overflow-x: hidden;
+}
+
+/* Data tables are the widest thing here — Recent Calls carries eight columns and will not fit a
+   phone at any sane font size. Let the table scroll within its container rather than shrink its
+   columns into unreadable slivers. */
+.cds--data-table-content,
+.cds--data-table-container {
+  overflow-x: auto;
+}
+
+/* Charts size themselves to their container via a ResizeObserver. If that measurement lands wider
+   than the phone (or simply has not settled yet), the chart bleeds out of its tile and off the page.
+   Scrolling it INSIDE its own box keeps the overflow attached to the chart — which is the thing that
+   is genuinely too wide — instead of letting it drag the whole document sideways. */
+.cds--cc--chart-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.cds--cc--chart-wrapper svg {
+  max-width: 100%;
+}
+
+/* Long, unbreakable strings — the MCP endpoint URL on the Overview page is one — are a classic
+   source of horizontal overflow on a phone: they cannot wrap, so they widen their parent instead. */
+code,
+.cds--snippet {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* The stat tiles sit in a Carbon grid that gives each a fixed share of the row. On a phone four
+   across is four unreadable columns; let them wrap into a sensible stack. */
+@media (max-width: 42rem) {
+  .cds--css-grid,
+  .cds--subgrid {
+    row-gap: 1rem;
+  }
+}
