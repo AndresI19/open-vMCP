@@ -1,4 +1,4 @@
-# ---- builder: install all deps, build server (tsc) + dashboard (vite) ----
+# ---- builder: install all deps, build server (tsc) + dashboard (vite), then drop dev deps ----
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
@@ -8,17 +8,24 @@ COPY server/package.json ./server/
 COPY web/package.json ./web/
 RUN npm install
 
-# Build.
+# Build, then prune to production dependencies. The runtime runs the COMPILED gateway
+# (node server/dist/…) — it never needs tsc, vite, vitest or drizzle-kit — so those have no business
+# shipping in the image. Migrations run from the compiled server/dist/db/migrate.js against the SQL in
+# server/drizzle, using drizzle-ORM (a prod dep), not drizzle-KIT.
 COPY tsconfig.base.json ./
 COPY server ./server
 COPY web ./web
 COPY config ./config
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 
-# ---- runner: slim image running the compiled gateway ----
+# ---- runner: apt-patched slim image, no npm, running the compiled gateway on prod deps only ----
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+# Patch the OS, then strip npm (the runtime only runs `node` via the entrypoint): both are pure CVE
+# surface, and npm's bundled node_modules are a recurring source of HIGH/CRITICAL findings.
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
