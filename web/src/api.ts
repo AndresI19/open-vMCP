@@ -69,11 +69,41 @@ export interface AggTool {
   enabled: boolean;
 }
 
+// Where the data API lives. Defaults to same-origin under the prefix the dashboard is served from
+// (import.meta.env.BASE_URL, e.g. '/vmcp/'), which is the local deployment.
+//
+// In production the API is a separate origin (api-andres.project-platform.me), so this is overridden
+// at RUNTIME from /vmcp/config.json — see setApiBase, called by main.tsx before the app renders.
+// Runtime rather than build-time on purpose: the same image then runs locally and in production, and
+// the hostname is a deploy concern, not a compile-time one.
+let BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+/** Point every subsequent API call at `base` (an absolute origin). Empty/undefined keeps the default. */
+export function setApiBase(base: string | undefined): void {
+  if (base) BASE = base.replace(/\/$/, "");
+}
+
+// The MCP endpoint we advertise to clients on the Overview page. Same runtime-config reasoning as
+// BASE above: empty means same-origin (`/mcp` behind whatever proxy served this page), and the
+// deployment supplies the public host. It is deliberately NOT the in-cluster Service address — that
+// only resolves for cluster members, and the client reading this string runs outside the cluster.
+let MCP = "";
+
+export function setMcpUrl(url: string | undefined): void {
+  if (url) MCP = url.replace(/\/$/, "");
+}
+
+/** The endpoint an external MCP client should connect to. Absolute in production, same-origin locally. */
+export function mcpEndpoint(): string {
+  return MCP || `${window.location.origin}/mcp`;
+}
+
 async function get<T>(path: string): Promise<T> {
-  const r = await fetch(path);
+  const r = await fetch(BASE + path);
   if (!r.ok) throw new Error(`${path} → ${r.status}`);
   return (await r.json()) as T;
 }
+const send = (path: string, init?: RequestInit): Promise<Response> => fetch(BASE + path, init);
 
 export const api = {
   overview: () => get<Overview>("/api/stats/overview"),
@@ -85,21 +115,21 @@ export const api = {
   mockToken: (user: string) =>
     get<{ user: string; token: string }>(`/auth/mock-token?user=${encodeURIComponent(user)}`),
   createServer: (body: Record<string, unknown>) =>
-    fetch("/api/servers", {
+    send("/api/servers", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     }),
   patchServer: (id: string, body: Record<string, unknown>) =>
-    fetch(`/api/servers/${id}`, {
+    send(`/api/servers/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     }),
-  deleteServer: (id: string) => fetch(`/api/servers/${id}`, { method: "DELETE" }),
+  deleteServer: (id: string) => send(`/api/servers/${id}`, { method: "DELETE" }),
   /** Master switch: enable/disable every registered server in one write. */
   setAllServersEnabled: (enabled: boolean) =>
-    fetch("/api/servers", {
+    send("/api/servers", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ enabled }),
@@ -107,14 +137,14 @@ export const api = {
   server: (id: string) => get<ServerRow>(`/api/servers/${id}`),
   serverTools: (id: string) => get<{ tools: ToolInfo[] }>(`/api/servers/${id}/tools`),
   setToolEnabled: (id: string, tool: string, enabled: boolean) =>
-    fetch(`/api/servers/${id}/tools/${encodeURIComponent(tool)}`, {
+    send(`/api/servers/${id}/tools/${encodeURIComponent(tool)}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ enabled }),
     }),
   /** Master switch: enable/disable many of one server's tools in one write. */
   setServerToolsEnabled: (id: string, tools: string[], enabled: boolean) =>
-    fetch(`/api/servers/${id}/tools`, {
+    send(`/api/servers/${id}/tools`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ enabled, tools }),

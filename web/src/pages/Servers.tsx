@@ -17,7 +17,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { useNavigate } from "react-router-dom";
-import { api, usePoll, type ServerRow } from "../api";
+import { api, mcpEndpoint, usePoll, type ServerRow } from "../api";
 import MasterToggle from "../components/MasterToggle";
 
 const PAGE_SIZE = 20;
@@ -33,7 +33,14 @@ export default function Servers() {
 
   const [form, setForm] = useState({ slug: "", name: "", url: "", transport: "sse" });
 
-  const origin = window.location.origin; // e.g. http://localhost:8001
+  // NOT window.location.origin. The dashboard is served from the FRONT-END host, which deliberately
+  // does not serve /mcp — it answers with a 404 naming the api host, so that a misconfigured client
+  // fails loudly instead of getting the home page's SPA catch-all with a 200. Deriving the endpoint
+  // from the page's own origin would therefore print an address that is guaranteed not to work in
+  // production. mcpEndpoint() comes from /vmcp/config.json: same-origin locally, the api host in
+  // production. (It cannot be the in-cluster Service address either — the client reading this runs
+  // outside the cluster, where cluster DNS does not resolve.)
+  const origin = mcpEndpoint().replace(/\/mcp$/, "");
   const start = (page - 1) * PAGE_SIZE;
   const pageServers = servers.slice(start, start + PAGE_SIZE);
 
@@ -218,7 +225,7 @@ export default function Servers() {
           <TextInput
             id="url"
             labelText="Upstream URL"
-            placeholder="https://host/mcp  or  http://localhost:9000/sse"
+            placeholder="http://my-mcp.platform.svc.cluster.local:8000/sse"
             value={form.url}
             onChange={(e) => setForm({ ...form, url: e.target.value })}
           />
