@@ -1,3 +1,5 @@
+import { authHeaders, isAdmin, isSignedIn } from "./auth";
+import { notify } from "./notify";
 import { useCallback, useEffect, useState } from "react";
 
 export interface Overview {
@@ -103,7 +105,61 @@ async function get<T>(path: string): Promise<T> {
   if (!r.ok) throw new Error(`${path} → ${r.status}`);
   return (await r.json()) as T;
 }
-const send = (path: string, init?: RequestInit): Promise<Response> => fetch(BASE + path, init);
+/**
+ * Every MUTATION goes through here, so the bearer is attached in one place rather than at each of the
+ * seven call sites. Reads deliberately do NOT carry one: the dashboard is meant to be looked at, and
+ * the server keeps reads open.
+ *
+ * A non-admin still gets the request sent and still gets a 403 back. That is on purpose — the UI
+ * hides the controls, but hiding is a courtesy, not the defence. The defence is the server.
+ */
+const send = async (path: string, init: RequestInit = {}): Promise<Response> => {
+  // Short-circuit a write the caller cannot make. Without an admin claim the server refuses it with a
+  // 403 regardless, so firing the request — and the refresh() every handler runs after it — only buys
+  // a round-trip's delay before the same "not allowed" toast. Answering here instead keeps an
+  // unauthorized click completely INERT: a notification and nothing else, no fetch and no re-render.
+  // The SERVER is still the lock — every write is re-checked there against the signed claim; this is a
+  // courtesy for the person clicking, not the defence.
+  if (!isAdmin()) {
+    notify(
+      isSignedIn()
+        ? {
+            kind: "error",
+            title: "Not allowed",
+            subtitle: "Changing the registry needs an admin. You are signed in without that role.",
+          }
+        : {
+            kind: "error",
+            title: "Sign in first",
+            subtitle: "Sign in (top-right) to make changes.",
+          },
+    );
+    return new Response(null, { status: isSignedIn() ? 403 : 401 });
+  }
+
+  const headers = new Headers(init.headers);
+  for (const [k, v] of Object.entries(await authHeaders())) headers.set(k, v);
+  const res = await fetch(BASE + path, { ...init, headers });
+
+  // Defence in depth for the admin path: a token that expired between render and click, or a claim the
+  // server no longer honours, still surfaces here rather than failing in silence.
+  if (res.status === 403) {
+    notify({
+      kind: "error",
+      title: "Not allowed",
+      subtitle: "Changing the registry needs an admin. You are signed in without that role.",
+    });
+  } else if (res.status === 401) {
+    notify({
+      kind: "error",
+      title: isSignedIn() ? "Session expired" : "Sign in first",
+      subtitle: isSignedIn()
+        ? "Your token has expired — sign in again from the top-right."
+        : "Sign in (top-right) to make changes.",
+    });
+  }
+  return res;
+};
 
 export const api = {
   overview: () => get<Overview>("/api/stats/overview"),
@@ -112,8 +168,6 @@ export const api = {
   servers: () => get<ServerRow[]>("/api/servers"),
   users: () => get<UserRow[]>("/api/users"),
   calls: (limit = 100) => get<CallRow[]>(`/api/calls?limit=${limit}`),
-  mockToken: (user: string) =>
-    get<{ user: string; token: string }>(`/auth/mock-token?user=${encodeURIComponent(user)}`),
   createServer: (body: Record<string, unknown>) =>
     send("/api/servers", {
       method: "POST",

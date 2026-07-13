@@ -1,4 +1,5 @@
 import type { AuthConfig } from "../config/load.js";
+import { verifyToken } from "./verify.js";
 
 export interface Identity {
   /** The external user id decoded from the token (null when absent/unmapped). */
@@ -18,9 +19,12 @@ export function getByPath(obj: unknown, path: string): unknown {
 }
 
 /**
- * Decode a JWT's payload segment WITHOUT verifying its signature. This is the
- * mocked v1 path — any JWT-shaped (or bare base64url-JSON) token is accepted so the
- * front end can be exercised. Real verification would slot in before this returns.
+ * Decode a JWT's payload segment WITHOUT verifying its signature.
+ *
+ * This is the MOCKED path, used only when config/auth.json has `verify: false`. Any JWT-shaped (or
+ * bare base64url-JSON) token is accepted, which is what let the dashboard be built before an auth
+ * service existed. It is not a fallback and it is not a degraded mode — with `verify: true` this
+ * function is never reached. See verify.ts.
  */
 export function decodeJwtPayload(token: string): Record<string, unknown> {
   const parts = token.split(".");
@@ -35,18 +39,24 @@ export function decodeJwtPayload(token: string): Record<string, unknown> {
 
 /**
  * Resolve a bearer token to an identity using the configured claim mappings.
- * Data-driven: change config/auth.json's `from` path to point at wherever the id
- * lives in the token; no code change required.
+ * Data-driven: change config/auth.json's `from` path to point at wherever the id lives in the token;
+ * no code change required.
+ *
+ * ASYNC, because verification is: fetching the issuer's public keys is a network call. That is why
+ * this could not simply be bolted on to the old synchronous function — the signature had to change,
+ * and every caller with it. A "verify" flag that could be honoured without touching the call graph
+ * would have been a verify flag that was not really verifying.
  */
-export function resolveIdentity(
+export async function resolveIdentity(
   token: string | null | undefined,
   cfg: AuthConfig,
-): Identity {
+): Promise<Identity> {
   if (!token) return { userId: null, claims: {} };
 
-  // v1: verify:false → decode only. When cfg.verify is true, signature validation
-  // (HS* via cfg.secret, or RS*/JWKS via cfg.jwksUri) would run here first.
-  const claims = decodeJwtPayload(token);
+  // The fork the `verify` flag was always supposed to control, and until now did not.
+  const claims: Record<string, unknown> = cfg.verify
+    ? ((await verifyToken(token, cfg)) as Record<string, unknown>)
+    : decodeJwtPayload(token);
 
   const mapped: Record<string, unknown> = {};
   for (const m of cfg.claimMappings) {

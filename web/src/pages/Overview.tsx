@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Grid, Column, Tile, TextInput, Button, InlineNotification } from "@carbon/react";
+import { useEffect, useState } from "react";
+import { Grid, Column, Tile, CodeSnippet } from "@carbon/react";
 import { LineChart } from "@carbon/charts-react";
 import { ScaleTypes } from "@carbon/charts";
 import { api, mcpEndpoint, usePoll } from "../api";
+import { current, isSignedIn, token as authToken } from "../auth";
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
@@ -17,8 +18,14 @@ export default function Overview() {
   const { data: ov } = usePoll(api.overview);
   const { data: series } = usePoll(api.timeseries);
 
-  const [user, setUser] = useState("andres");
-  const [token, setToken] = useState<string | null>(null);
+  // The real bearer, fetched from the identity you are signed in as. The old "mint a mock token"
+  // control is gone: it produced an alg:none token the gateway now REJECTS, and on the public site
+  // its request path collided with the real auth service and 404'd — a button that looked like it
+  // worked and never could.
+  const [tok, setTok] = useState<string | null>(null);
+  useEffect(() => {
+    if (isSignedIn()) void authToken().then(setTok);
+  }, []);
 
   const chartData = (series ?? []).map((p) => ({
     group: "calls",
@@ -65,33 +72,24 @@ export default function Overview() {
       <Tile>
         <h4 style={{ marginBottom: "1rem" }}>Connect a client</h4>
         <p style={{ color: "var(--cds-text-secondary)", marginBottom: "1rem" }}>
-          Point an MCP client at <code>{mcpEndpoint()}/&lt;slug&gt;</code> and send a bearer token.
-          Mint a mock token for a user below.
+          Point an MCP client at <code>{mcpEndpoint()}/&lt;slug&gt;</code> and send your bearer token
+          in the <code>Authorization</code> header.
         </p>
-        <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", maxWidth: 520 }}>
-          <TextInput
-            id="mint-user"
-            labelText="User id"
-            value={user}
-            onChange={(e) => setUser(e.target.value)}
-          />
-          <Button
-            onClick={async () => {
-              const r = await api.mockToken(user);
-              setToken(r.token);
-            }}
-          >
-            Mint token
-          </Button>
-        </div>
-        {token && (
-          <InlineNotification
-            kind="info"
-            title="Mock bearer token"
-            subtitle={token}
-            lowContrast
-            style={{ marginTop: "1rem", maxWidth: "100%" }}
-          />
+        {isSignedIn() && tok ? (
+          <>
+            <p style={{ color: "var(--cds-text-secondary)", marginBottom: "0.5rem", fontSize: "0.8rem" }}>
+              Your token as <strong>{current()?.username}</strong> — expires in 24h; sign in again to
+              refresh.
+            </p>
+            <CodeSnippet type="multi" feedback="Copied">
+              {`Authorization: Bearer ${tok}`}
+            </CodeSnippet>
+          </>
+        ) : (
+          <p style={{ color: "var(--cds-text-secondary)", fontSize: "0.85rem" }}>
+            Sign in (top-right) to get a token. No account? Create one on the quiz or the home page —
+            it is the same identity everywhere.
+          </p>
         )}
       </Tile>
     </>

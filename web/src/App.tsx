@@ -18,6 +18,8 @@ import ServerDetail from "./pages/ServerDetail";
 import AllTools from "./pages/AllTools";
 import Users from "./pages/Users";
 import RecentCalls from "./pages/RecentCalls";
+import Account from "./components/Account";
+import Toasts from "./components/Toasts";
 
 const NAV = [
   { to: "/", label: "Overview" },
@@ -40,7 +42,7 @@ export default function App() {
   }, []);
 
   return (
-    // HeaderContainer owns the "is the nav open?" state and hands it to the menu button and the
+    // Toasts render above everything; HeaderContainer owns the "is the nav open?" state and hands it to the menu button and the
     // SideNav together. It replaces a hardcoded `expanded`, which was the bug: the nav was pinned
     // open at EVERY width, and Carbon's rule
     //     .cds--side-nav--expanded ~ .cds--content { margin-inline-start: 16rem }
@@ -54,6 +56,7 @@ export default function App() {
         onClickSideNavExpand: () => void;
       }) => (
         <>
+          <Toasts />
           <Header aria-label="vMCP Gateway">
             <SkipToContent />
             {/* Carbon shows this only below its `lg` breakpoint, so the hamburger appears exactly
@@ -72,6 +75,10 @@ export default function App() {
             <HeaderName href={import.meta.env.BASE_URL} prefix="vMCP">
               Gateway
             </HeaderName>
+
+            {/* Identity, top-right. The same session as the other front ends: they all read one
+                localStorage key, so signing in on the quiz signs you in here. */}
+            <Account />
 
             {/* Rendered INSIDE <Header> on purpose. That is what makes it a child of the header, which
                 is what earns it Carbon's `cds--side-nav--ux` class — and that class is the whole
