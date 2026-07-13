@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { loadAuthConfig } from "../config/load.js";
+import { ensureUser } from "../db/users.js";
 import { resolveIdentity } from "./identity.js";
 
 /**
@@ -8,7 +9,7 @@ import { resolveIdentity } from "./identity.js";
  * and demanding one are separate steps, so a route can be readable-while-anonymous
  * (the aggregate catalog) without also being callable-while-anonymous.
  */
-export function identityMiddleware(req: Request, _res: Response, next: NextFunction): void {
+export async function identityMiddleware(req: Request, _res: Response, next: NextFunction): Promise<void> {
   const cfg = loadAuthConfig();
   const header = req.headers["authorization"];
   const token =
@@ -18,9 +19,27 @@ export function identityMiddleware(req: Request, _res: Response, next: NextFunct
 
   let userId: string | null = null;
   try {
-    userId = resolveIdentity(token, cfg).userId;
+    const id = await resolveIdentity(token, cfg);
+    userId = id.userId;
+
+    // Record the USERNAME here, at the moment of authentication, rather than at the moment of a tool
+    // call. The dashboard's User column shows whatever this row holds — and a `sub` is a UUID, which
+    // is a correct identity and a useless thing to read. The username is what the user chose and the
+    // only part of their identity that is safe to display.
+    //
+    // Doing it in the middleware rather than in telemetry.ts also means it lands on ANY authenticated
+    // request, not only on a tool call, and it does not require threading a parameter through the
+    // nine places that record one. It is an idempotent upsert; its failure must never fail the
+    // request, so it is fire-and-forget.
+    const displayName = id.claims["username"];
+    if (userId && typeof displayName === "string") {
+      void ensureUser(userId, displayName).catch(() => {});
+    }
   } catch {
-    userId = null; // malformed token → treated as missing
+    // A token we cannot vouch for grants NOTHING. Malformed, expired, wrong issuer, forged — they all
+    // land here and all become "anonymous", which is the safe direction: the caller then meets
+    // requireIdentity and is turned away, rather than being quietly trusted.
+    userId = null;
   }
 
   req.userId = userId;

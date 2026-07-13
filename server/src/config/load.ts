@@ -19,6 +19,11 @@ export const authConfigSchema = z.object({
   verify: z.boolean().default(false),
   secret: z.string().optional(), // HS* shared secret (when verify:true)
   jwksUri: z.string().url().optional(), // RS*/JWKS endpoint (when verify:true)
+  // Checked as part of verification, not decoration: a signature proves a token is genuine, and
+  // these prove it was minted for US. Without them a valid token issued by the same authority for a
+  // different audience would be accepted here.
+  issuer: z.string().optional(),
+  audience: z.string().optional(),
   claimMappings: z.array(claimMappingSchema).min(1),
   onMissing: z.enum(["reject", "anonymous"]).default("reject"),
 });
