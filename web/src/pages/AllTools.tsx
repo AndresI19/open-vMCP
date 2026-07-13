@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
+import ToolArgs from "../components/ToolArgs";
 import {
   Table,
   TableHead,
@@ -106,6 +107,7 @@ export default function AllTools() {
               <TableHeader>Server</TableHeader>
               <TableHeader>Tool</TableHeader>
               <TableHeader>Description</TableHeader>
+              <TableHeader>Accepted arguments</TableHeader>
               <TableHeader>Enabled</TableHeader>
             </TableRow>
           </TableHead>
@@ -130,6 +132,9 @@ export default function AllTools() {
                 </TableCell>
                 <TableCell>
                   <div style={{ maxWidth: 520, whiteSpace: "normal" }}>{t.description}</div>
+                </TableCell>
+                <TableCell>
+                  <ToolArgs inputSchema={t.inputSchema} />
                 </TableCell>
                 <TableCell>
                   <Toggle

@@ -27,6 +27,10 @@ toolsRouter.get("/", async (_req, res) => {
           serverEnabled: s.enabled,
           name: t.name,
           description: t.description ?? "",
+          // The tool's JSON Schema, straight from the upstream's tools/list. The gateway was
+          // fetching it and throwing it away, so the dashboard could tell you a tool existed but not
+          // how to call it. The per-server route already passed it through; this one did not.
+          inputSchema: t.inputSchema,
           enabled: settings.get(t.name) ?? true,
         }));
       } finally {

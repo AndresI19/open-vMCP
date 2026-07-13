@@ -66,6 +66,9 @@ export interface AggTool {
   serverEnabled: boolean;
   name: string;
   description: string;
+  /** The tool's JSON Schema, as the upstream declared it in tools/list. Null when the upstream
+   *  did not provide one — which is a different fact from "takes no arguments". */
+  inputSchema: unknown;
   enabled: boolean;
 }
 

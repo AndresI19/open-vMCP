@@ -18,6 +18,7 @@ import {
   InlineLoading,
   InlineNotification,
 } from "@carbon/react";
+import ToolArgs from "../components/ToolArgs";
 import { api, usePoll, useAsync, type ToolInfo } from "../api";
 import MasterToggle from "../components/MasterToggle";
 import { StatusTag, fmtTime, fmtLatency, DASH } from "../format";
@@ -127,6 +128,7 @@ export default function ServerDetail() {
                 <TableRow>
                   <TableHeader>Tool</TableHeader>
                   <TableHeader>Description</TableHeader>
+                  <TableHeader>Accepted arguments</TableHeader>
                   <TableHeader>Enabled</TableHeader>
                 </TableRow>
               </TableHead>
@@ -138,6 +140,9 @@ export default function ServerDetail() {
                     </TableCell>
                     <TableCell>
                       <div style={{ maxWidth: 560, whiteSpace: "normal" }}>{t.description}</div>
+                    </TableCell>
+                    <TableCell>
+                      <ToolArgs inputSchema={t.inputSchema} />
                     </TableCell>
                     <TableCell>
                       <Toggle
