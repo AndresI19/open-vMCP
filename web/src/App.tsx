@@ -18,6 +18,7 @@ import ServerDetail from "./pages/ServerDetail";
 import AllTools from "./pages/AllTools";
 import Users from "./pages/Users";
 import RecentCalls from "./pages/RecentCalls";
+import Account from "./components/Account";
 
 const NAV = [
   { to: "/", label: "Overview" },
@@ -72,6 +73,10 @@ export default function App() {
             <HeaderName href={import.meta.env.BASE_URL} prefix="vMCP">
               Gateway
             </HeaderName>
+
+            {/* Identity, top-right. The same session as the other front ends: they all read one
+                localStorage key, so signing in on the quiz signs you in here. */}
+            <Account />
 
             {/* Rendered INSIDE <Header> on purpose. That is what makes it a child of the header, which
                 is what earns it Carbon's `cds--side-nav--ux` class — and that class is the whole

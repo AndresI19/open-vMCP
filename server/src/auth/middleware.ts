@@ -35,6 +35,11 @@ export async function identityMiddleware(req: Request, _res: Response, next: Nex
     if (userId && typeof displayName === "string") {
       void ensureUser(userId, displayName).catch(() => {});
     }
+
+    // The role rides in the token, SIGNED. It is not looked up here, and it could not be: the admin
+    // list is a secret the auth service holds and this service does not. That is the point — the
+    // gateway enforces a policy it is not allowed to read.
+    req.isAdmin = id.claims["admin"] === true;
   } catch {
     // A token we cannot vouch for grants NOTHING. Malformed, expired, wrong issuer, forged — they all
     // land here and all become "anonymous", which is the safe direction: the caller then meets
@@ -45,6 +50,36 @@ export async function identityMiddleware(req: Request, _res: Response, next: Nex
   req.userId = userId;
   req.bearer = token;
   next();
+}
+
+/**
+ * Writes require an admin.
+ *
+ * This REPLACES the nginx `limit_except GET HEAD OPTIONS` that used to guard the public dashboard.
+ * That was always a stopgap and was documented as one: a routing-layer control, not an application
+ * one — bypass nginx and you bypass the control. It also could not tell an admin from anyone else,
+ * because it cannot read a JWT, so with it in place the admin could not write from the public site
+ * either.
+ *
+ * Now the check is where it belongs: in the thing being protected, on a signed claim.
+ *
+ * Reads stay open. The dashboard is meant to be looked at.
+ */
+export function requireAdminForWrites(req: Request, res: Response, next: NextFunction): void {
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
+    next();
+    return;
+  }
+  if (req.isAdmin) {
+    next();
+    return;
+  }
+  res
+    .status(req.userId ? 403 : 401)
+    .set("WWW-Authenticate", 'Bearer realm="vmcp"')
+    .json({
+      error: req.userId ? "forbidden: this action needs an admin" : "sign in as an admin to change anything",
+    });
 }
 
 /** Whether an anonymous caller must be turned away, per config/auth.json `onMissing`. */

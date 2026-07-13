@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { repoRoot } from "./paths.js";
 import { loadAuthConfig } from "./config/load.js";
-import { identityMiddleware } from "./auth/middleware.js";
+import { identityMiddleware, requireAdminForWrites } from "./auth/middleware.js";
 import { mintMockToken } from "./auth/mint.js";
 import { mcpRouter } from "./mcp/router.js";
 import { apiRouter } from "./api/index.js";
@@ -93,7 +93,10 @@ dash.get("/auth/mock-token", (req, res) => {
   }
   res.json({ user, token: mintMockToken(user) });
 });
-dash.use("/api", apiRouter);
+// The dashboard API had NO authentication whatsoever — its writes were guarded only by an nginx
+// method filter on the public vhost. Identity is resolved here and writes now require an admin; reads
+// stay open, because a dashboard is for looking at.
+dash.use("/api", identityMiddleware, requireAdminForWrites, apiRouter);
 const webDist = resolve(repoRoot, "web/dist");
 if (existsSync(webDist)) {
   dash.use(express.static(webDist));

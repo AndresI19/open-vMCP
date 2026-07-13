@@ -18,6 +18,7 @@ import {
 } from "@carbon/react";
 import { useNavigate } from "react-router-dom";
 import { api, mcpEndpoint, usePoll, type ServerRow } from "../api";
+import { isAdmin } from "../auth";
 import MasterToggle from "../components/MasterToggle";
 
 const PAGE_SIZE = 20;
@@ -186,6 +187,20 @@ export default function Servers() {
         />
       </div>
 
+      {/* The write surface. Only rendered for an admin — and this is a courtesy, not the defence:
+          the server rejects the POST from anyone else with a 403 regardless of what is on screen. A
+          non-admin sees the read-only note instead, so the absence of the form is explained rather
+          than mysterious. */}
+      {!isAdmin() && (
+        <Tile style={{ marginBottom: "1.5rem" }}>
+          <p style={{ color: "var(--cds-text-secondary)", fontSize: "0.85rem" }}>
+            You are viewing the registry read-only. Registering, editing, or removing a server needs
+            an admin — sign in top-right.
+          </p>
+        </Tile>
+      )}
+
+      {isAdmin() && (
       <Tile>
         <h4 style={{ marginBottom: "1rem" }}>Register an MCP server</h4>
         {error && (
@@ -234,6 +249,7 @@ export default function Servers() {
           Add server
         </Button>
       </Tile>
+      )}
     </>
   );
 }

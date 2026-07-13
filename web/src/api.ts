@@ -1,3 +1,4 @@
+import { authHeaders } from "./auth";
 import { useCallback, useEffect, useState } from "react";
 
 export interface Overview {
@@ -103,7 +104,19 @@ async function get<T>(path: string): Promise<T> {
   if (!r.ok) throw new Error(`${path} → ${r.status}`);
   return (await r.json()) as T;
 }
-const send = (path: string, init?: RequestInit): Promise<Response> => fetch(BASE + path, init);
+/**
+ * Every MUTATION goes through here, so the bearer is attached in one place rather than at each of the
+ * seven call sites. Reads deliberately do NOT carry one: the dashboard is meant to be looked at, and
+ * the server keeps reads open.
+ *
+ * A non-admin still gets the request sent and still gets a 403 back. That is on purpose — the UI
+ * hides the controls, but hiding is a courtesy, not the defence. The defence is the server.
+ */
+const send = async (path: string, init: RequestInit = {}): Promise<Response> => {
+  const headers = new Headers(init.headers);
+  for (const [k, v] of Object.entries(await authHeaders())) headers.set(k, v);
+  return fetch(BASE + path, { ...init, headers });
+};
 
 export const api = {
   overview: () => get<Overview>("/api/stats/overview"),
