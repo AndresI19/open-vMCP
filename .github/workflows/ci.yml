@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# npm workspaces (server + web). `npm run build` compiles the server with tsc and builds the web
+# bundle — that is the typecheck gate — and `npm test` runs both workspaces' vitest suites (no DB
+# needed). The built image is then scanned for HIGH/CRITICAL vulnerabilities with Trivy.
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+  image-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the vmcp image
+        run: docker build --pull -t scan-vmcp:ci .
+      - name: Trivy scan (HIGH,CRITICAL)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: scan-vmcp:ci
+          severity: HIGH,CRITICAL
+          exit-code: "0" # report-only: image carries a fixable-CVE backlog; flip to "1" after a hardening pass
+          ignore-unfixed: true
