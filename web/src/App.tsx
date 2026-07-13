@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   Content,
   Header,
-  HeaderGlobalBar,
   HeaderName,
   SideNav,
   SideNavItems,
@@ -39,14 +38,15 @@ export default function App() {
   return (
     <>
       <Header aria-label="vMCP Gateway">
+        {/* Top-left corner, ahead of the product name: the conventional place for "home", and the
+            same slot the other apps behind the proxy use. The Header is outside <Routes>, so this
+            renders on every page — including a server's detail page. */}
+        <a className="home-link" href={homeUrl} aria-label="Back to home">
+          ← Home
+        </a>
         <HeaderName href={import.meta.env.BASE_URL} prefix="vMCP">
           Gateway
         </HeaderName>
-        <HeaderGlobalBar>
-          <a className="cds--header__menu-item" href={homeUrl}>
-            ← Home
-          </a>
-        </HeaderGlobalBar>
       </Header>
 
       <SideNav aria-label="Side navigation" isFixedNav expanded isChildOfHeader={false}>

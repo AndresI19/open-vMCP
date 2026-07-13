@@ -69,9 +69,19 @@ export interface AggTool {
   enabled: boolean;
 }
 
-// The dashboard is served under import.meta.env.BASE_URL (e.g. '/vmcp/') behind the reverse proxy;
-// every gateway request is prefixed with it so it routes to the backend under the same prefix.
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+// Where the data API lives. Defaults to same-origin under the prefix the dashboard is served from
+// (import.meta.env.BASE_URL, e.g. '/vmcp/'), which is the local deployment.
+//
+// In production the API is a separate origin (api-andres.project-platform.me), so this is overridden
+// at RUNTIME from /vmcp/config.json — see setApiBase, called by main.tsx before the app renders.
+// Runtime rather than build-time on purpose: the same image then runs locally and in production, and
+// the hostname is a deploy concern, not a compile-time one.
+let BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+/** Point every subsequent API call at `base` (an absolute origin). Empty/undefined keeps the default. */
+export function setApiBase(base: string | undefined): void {
+  if (base) BASE = base.replace(/\/$/, "");
+}
 
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(BASE + path);

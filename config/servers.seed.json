@@ -7,6 +7,14 @@
       "transport": "sse",
       "enabled": true,
       "forwardAuth": false
+    },
+    {
+      "slug": "deepwiki",
+      "name": "DeepWiki",
+      "url": "https://mcp.deepwiki.com/mcp",
+      "transport": "streamable-http",
+      "enabled": true,
+      "forwardAuth": false
     }
   ]
 }

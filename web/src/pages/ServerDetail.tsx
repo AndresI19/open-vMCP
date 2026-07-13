@@ -20,12 +20,7 @@ import {
 } from "@carbon/react";
 import { api, usePoll, useAsync, type ToolInfo } from "../api";
 import MasterToggle from "../components/MasterToggle";
-
-function statusColor(status: string) {
-  if (status === "ok") return "green";
-  if (status === "blocked") return "warm-gray";
-  return "red";
-}
+import { StatusTag, fmtTime, fmtLatency, DASH } from "../format";
 
 export default function ServerDetail() {
   const { id = "" } = useParams();
@@ -177,18 +172,18 @@ export default function ServerDetail() {
               <TableBody>
                 {(calls ?? []).map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell>{new Date(c.createdAt).toLocaleTimeString()}</TableCell>
+                    <TableCell>{fmtTime(c.createdAt)}</TableCell>
                     <TableCell>
-                      <code>{c.userExternalId ?? "-"}</code>
+                      <code>{c.userExternalId ?? DASH}</code>
                     </TableCell>
                     <TableCell>{c.toolName}</TableCell>
                     <TableCell>
                       <code style={{ fontSize: "0.75rem" }}>{JSON.stringify(c.arguments)}</code>
                     </TableCell>
                     <TableCell>
-                      <Tag type={statusColor(c.status)}>{c.status}</Tag>
+                      <StatusTag status={c.status} />
                     </TableCell>
-                    <TableCell>{c.latencyMs != null ? `${c.latencyMs} ms` : "-"}</TableCell>
+                    <TableCell>{fmtLatency(c.latencyMs)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

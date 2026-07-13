@@ -1,0 +1,27 @@
+/* Home link in the top-left corner of the header. Every app behind the reverse proxy puts its
+   "back to the platform" link in this same slot, so it is always in one predictable place.
+   The Carbon header is near-black, and inverse text on it was hard to read — so this is drawn as
+   a filled grey square with black text, which reads as a button rather than disappearing into the
+   bar. Colours are hard-coded rather than tokenised: the header sits outside the page theme, so
+   grey-20 on black holds its contrast in both light and dark modes. */
+.home-link {
+  display: inline-flex;
+  align-items: center;
+  height: 3rem; /* matches the Carbon header height */
+  padding: 0 1rem;
+  background: #e0e0e0; /* Carbon grey-20 */
+  color: #161616; /* Carbon gray-100 — black text on the grey square */
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.16px;
+  transition: background 0.11s;
+}
+.home-link:hover {
+  background: #c6c6c6; /* grey-30 */
+  color: #161616;
+}
+.home-link:focus {
+  outline: 2px solid #0f62fe;
+  outline-offset: -2px;
+}

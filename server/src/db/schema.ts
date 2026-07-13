@@ -65,7 +65,10 @@ export const toolCalls = pgTable(
     toolName: text("tool_name").notNull(),
     arguments: jsonb("arguments"),
     argsRedacted: boolean("args_redacted").notNull().default(false),
-    status: text("status").notNull(), // "ok" | "error"
+    // "ok" | "error" | "blocked". `blocked` is a call the gateway refused by policy (a disabled
+    // tool) — it is NOT a failure, and the dashboard must not paint it as one. This comment said
+    // "ok | error" for a while, and the Recent Calls table duly rendered every blocked call red.
+    status: text("status").notNull(),
     errorMessage: text("error_message"),
     latencyMs: integer("latency_ms"),
     requestedAt: timestamp("requested_at", { withTimezone: true }),

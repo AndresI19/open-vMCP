@@ -9,6 +9,7 @@ import {
   Pagination,
 } from "@carbon/react";
 import { api, usePoll, usePaged } from "../api";
+import { StatusTag, fmtTime, fmtLatency, DASH } from "../format";
 
 export default function RecentCalls() {
   const { data } = usePoll(api.calls, 4000);
@@ -33,11 +34,11 @@ export default function RecentCalls() {
         <TableBody>
           {pageItems.map((c) => (
             <TableRow key={c.id}>
-              <TableCell>{new Date(c.createdAt).toLocaleTimeString()}</TableCell>
+              <TableCell>{fmtTime(c.createdAt)}</TableCell>
               <TableCell>
-                <code>{c.userExternalId ?? "—"}</code>
+                <code>{c.userExternalId ?? DASH}</code>
               </TableCell>
-              <TableCell>{c.serverSlug ?? "—"}</TableCell>
+              <TableCell>{c.serverSlug ?? DASH}</TableCell>
               <TableCell>{c.toolName}</TableCell>
               <TableCell>
                 <code style={{ fontSize: "0.75rem" }}>
@@ -50,9 +51,9 @@ export default function RecentCalls() {
                 )}
               </TableCell>
               <TableCell>
-                <Tag type={c.status === "ok" ? "green" : "red"}>{c.status}</Tag>
+                <StatusTag status={c.status} />
               </TableCell>
-              <TableCell>{c.latencyMs != null ? `${c.latencyMs} ms` : "—"}</TableCell>
+              <TableCell>{fmtLatency(c.latencyMs)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
