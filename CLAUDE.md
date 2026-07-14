@@ -108,7 +108,12 @@ both the local cluster (same-origin) and the split-origin public deploy with no 
 
 - **The README and DEMO.md are stale on API paths.** They show `localhost:8001/api/servers` and
   `/auth/mock-token`. The real paths moved under `/vmcp/`: `/vmcp/api/servers`,
-  `/vmcp/auth/mock-token`, dashboard at `/vmcp/`. Only `/mcp*` and `/health` remain at the root.
+  `/vmcp/auth/mock-token`, dashboard at `/vmcp/`. Only `/mcp*`, `/health` and `/version` remain at
+  the root.
+- **`/version` reports the running image, not package.json.** It reads a `VERSION` file baked in by
+  the Dockerfile, which `platform-orchestration/k8s/deploy.sh` stamps from this repo's latest git tag
+  (suffixed `-snapshot` when the source differs from `main`). A dev checkout has no such file and
+  reports `"snapshot"`. The platform home page reads it through its own `/api/versions` aggregate.
 - **Single-replica only.** MCP sessions live in an in-process `Map`, so `listChanged` broadcasts
   cannot cross replicas. Do not scale this Deployment.
 - The aggregate `tools/list` and `GET /vmcp/api/tools` open a **fresh connection to every registered
