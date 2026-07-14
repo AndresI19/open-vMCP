@@ -1,5 +1,5 @@
 import './env.js';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
@@ -76,6 +76,21 @@ app.use((req, res, next) => {
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
+});
+
+// The version this image was built from. Baked into <root>/VERSION by the Dockerfile, which
+// k8s/deploy.sh stamps from the repo's latest git tag (suffixed -snapshot when the source differs
+// from main). Read once at startup — it cannot change without a new image. Absent in a dev checkout,
+// hence "snapshot": an untagged build must not claim to be a release.
+const VERSION = ((): string => {
+  try {
+    return readFileSync(resolve(repoRoot, 'VERSION'), 'utf8').trim() || 'snapshot';
+  } catch {
+    return 'snapshot';
+  }
+})();
+app.get('/version', (_req, res) => {
+  res.json({ version: VERSION });
 });
 
 // The vMCP endpoints Claude connects to stay at the ROOT path (the reverse proxy routes /mcp/

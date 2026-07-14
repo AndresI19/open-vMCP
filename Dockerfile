@@ -22,6 +22,19 @@ RUN npm run build && npm prune --omit=dev
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+
+# Version, stamped by k8s/deploy.sh — an OCI label so the image is identifiable without running it,
+# and a VERSION file so the gateway can serve it from /version. Unset (a bare `docker build`) writes
+# an empty file and the server reports "snapshot"; a dev build must not claim to be a release.
+ARG VERSION
+ARG GIT_SHA
+ARG BUILD_DATE
+LABEL org.opencontainers.image.title="open-vMCP" \
+      org.opencontainers.image.description="Virtual-MCP gateway + dashboard" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.created="${BUILD_DATE}"
+RUN printf '%s' "${VERSION}" > /app/VERSION
 # Patch the OS, then strip npm (the runtime only runs `node` via the entrypoint): both are pure CVE
 # surface, and npm's bundled node_modules are a recurring source of HIGH/CRITICAL findings.
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* \
