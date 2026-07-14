@@ -19,15 +19,19 @@ const app = express();
 app.set('trust proxy', true);
 app.use(express.json({ limit: '4mb' }));
 
-// A coarse global cap as defence-in-depth against scraping and brute force. The ceiling is generous
-// because this process also serves the dashboard's static bundle, and one page load fans out to many
-// requests — real abuse trips it long before a human browsing does. Per-process (single replica), so
-// it resets on restart, which is acceptable for a rate this coarse.
+// A coarse global cap on MUTATING requests, as defence-in-depth against scraping and brute force.
+// Reads (GET/HEAD/OPTIONS) are SKIPPED deliberately: behind Cloudflare, nginx only ever sees a small
+// set of edge IPs, so `trust proxy` cannot separate real clients — and the dashboard's 5-second
+// polling plus the home page's liveness badges collapse into one shared bucket that 429s everyone
+// (which is exactly what took the badges offline). Limiting only writes (register/toggle a server,
+// call a tool) keeps the protection where abuse matters without throttling the read polling that the
+// platform's status badges depend on. Per-process (single replica); resets on restart.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 1000,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS',
   // We deliberately trust our own proxy chain; silence the permissive-trust-proxy validation.
   validate: { trustProxy: false },
 });
