@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   Content,
   Header,
@@ -9,35 +8,36 @@ import {
   SideNavItems,
   SideNavLink,
   SkipToContent,
-} from "@carbon/react";
-import { Link, Route, Routes, useLocation } from "react-router-dom";
-import Overview from "./pages/Overview";
-import ToolUsage from "./pages/ToolUsage";
-import Servers from "./pages/Servers";
-import ServerDetail from "./pages/ServerDetail";
-import AllTools from "./pages/AllTools";
-import Users from "./pages/Users";
-import RecentCalls from "./pages/RecentCalls";
-import Account from "./components/Account";
-import Toasts from "./components/Toasts";
+} from '@carbon/react';
+import { useEffect, useState } from 'react';
+import { Link, Route, Routes, useLocation } from 'react-router-dom';
+import Account from './components/Account';
+import Toasts from './components/Toasts';
+import AllTools from './pages/AllTools';
+import Overview from './pages/Overview';
+import RecentCalls from './pages/RecentCalls';
+import ServerDetail from './pages/ServerDetail';
+import Servers from './pages/Servers';
+import ToolUsage from './pages/ToolUsage';
+import Users from './pages/Users';
 
 const NAV = [
-  { to: "/", label: "Overview" },
-  { to: "/tools", label: "Tool Usage" },
-  { to: "/servers", label: "MCP Servers" },
-  { to: "/all-tools", label: "All Tools" },
-  { to: "/users", label: "Users" },
-  { to: "/calls", label: "Recent Calls" },
+  { to: '/', label: 'Overview' },
+  { to: '/tools', label: 'Tool Usage' },
+  { to: '/servers', label: 'MCP Servers' },
+  { to: '/all-tools', label: 'All Tools' },
+  { to: '/users', label: 'Users' },
+  { to: '/calls', label: 'Recent Calls' },
 ];
 
 export default function App() {
   const { pathname } = useLocation();
   // Link back to the platform home page; its URL is provided by the server (HOME_URL env, default "/").
-  const [homeUrl, setHomeUrl] = useState("/");
+  const [homeUrl, setHomeUrl] = useState('/');
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}config.json`)
       .then((r) => r.json())
-      .then((c: { homeUrl?: string }) => setHomeUrl(c.homeUrl || "/"))
+      .then((c: { homeUrl?: string }) => setHomeUrl(c.homeUrl || '/'))
       .catch(() => {});
   }, []);
 
@@ -62,7 +62,7 @@ export default function App() {
             {/* Carbon shows this only below its `lg` breakpoint, so the hamburger appears exactly
                 where the nav stops being permanently visible. */}
             <HeaderMenuButton
-              aria-label={isSideNavExpanded ? "Close menu" : "Open menu"}
+              aria-label={isSideNavExpanded ? 'Close menu' : 'Open menu'}
               aria-expanded={isSideNavExpanded}
               isActive={isSideNavExpanded}
               onClick={onClickSideNavExpand}

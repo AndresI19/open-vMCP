@@ -1,11 +1,11 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { ServerRow } from "../registry/index.js";
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import type { ServerRow } from '../registry/index.js';
 
 /** Only hosted (URL-addressable) upstream transports are permitted for now. */
-export const HOSTED_TRANSPORTS = ["sse", "streamable-http"] as const;
+export const HOSTED_TRANSPORTS = ['sse', 'streamable-http'] as const;
 
 /** Reject a hung upstream so one dead server can't stall a fan-out across all of them. */
 export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
@@ -23,13 +23,10 @@ export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promis
  * to forwardAuth, the caller's bearer is passed through (the RS server ignores it).
  */
 export async function connectUpstream(server: ServerRow, bearer?: string): Promise<Client> {
-  const client = new Client(
-    { name: "open-vmcp", version: "0.1.0" },
-    { capabilities: {} },
-  );
+  const client = new Client({ name: 'open-vmcp', version: '0.1.0' }, { capabilities: {} });
 
   // Hosted transports only — stdio/subprocess upstreams are disabled for now.
-  if (server.transport !== "sse" && server.transport !== "streamable-http") {
+  if (server.transport !== 'sse' && server.transport !== 'streamable-http') {
     throw new Error(
       `upstream transport '${server.transport}' is disabled; register a hosted (sse/streamable-http) server`,
     );
@@ -38,10 +35,10 @@ export async function connectUpstream(server: ServerRow, bearer?: string): Promi
 
   const url = new URL(server.url);
   const headers: Record<string, string> = {};
-  if (server.forwardAuth && bearer) headers["Authorization"] = `Bearer ${bearer}`;
+  if (server.forwardAuth && bearer) headers.Authorization = `Bearer ${bearer}`;
 
   const transport: Transport =
-    server.transport === "streamable-http"
+    server.transport === 'streamable-http'
       ? new StreamableHTTPClientTransport(url, { requestInit: { headers } })
       : new SSEClientTransport(url, { requestInit: { headers } });
 

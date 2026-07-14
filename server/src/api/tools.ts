@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { db } from "../db/client.js";
-import { mcpServers } from "../db/schema.js";
-import { connectUpstream, withTimeout } from "../mcp/upstream.js";
-import { toolSettingsMap } from "../registry/tools.js";
+import { Router } from 'express';
+import { db } from '../db/client.js';
+import { mcpServers } from '../db/schema.js';
+import { connectUpstream, withTimeout } from '../mcp/upstream.js';
+import { toolSettingsMap } from '../registry/tools.js';
 
 export const toolsRouter = Router();
 
@@ -12,7 +12,7 @@ export const toolsRouter = Router();
  * disabled). Upstreams are queried in parallel; a slow/unreachable server is reported
  * in `errors` rather than failing the whole response.
  */
-toolsRouter.get("/", async (_req, res) => {
+toolsRouter.get('/', async (_req, res) => {
   const servers = await db.select().from(mcpServers);
 
   const results = await Promise.allSettled(
@@ -26,7 +26,7 @@ toolsRouter.get("/", async (_req, res) => {
           serverSlug: s.slug,
           serverEnabled: s.enabled,
           name: t.name,
-          description: t.description ?? "",
+          description: t.description ?? '',
           enabled: settings.get(t.name) ?? true,
         }));
       } finally {
@@ -38,7 +38,7 @@ toolsRouter.get("/", async (_req, res) => {
   const tools: unknown[] = [];
   const errors: { slug: string; error: string }[] = [];
   results.forEach((r, i) => {
-    if (r.status === "fulfilled") tools.push(...r.value);
+    if (r.status === 'fulfilled') tools.push(...r.value);
     else errors.push({ slug: servers[i].slug, error: String(r.reason?.message ?? r.reason) });
   });
 

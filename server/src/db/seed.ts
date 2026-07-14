@@ -1,10 +1,10 @@
-import "../env.js";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { sql } from "drizzle-orm";
-import { configDir } from "../paths.js";
-import { db, pool } from "./client.js";
-import { mcpServers } from "./schema.js";
+import '../env.js';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { sql } from 'drizzle-orm';
+import { configDir } from '../paths.js';
+import { db, pool } from './client.js';
+import { mcpServers } from './schema.js';
 
 interface SeedServer {
   slug: string;
@@ -15,12 +15,12 @@ interface SeedServer {
   forwardAuth?: boolean;
 }
 
-const file = resolve(configDir(), "servers.seed.json");
-const parsed = JSON.parse(readFileSync(file, "utf8")) as { servers: SeedServer[] };
+const file = resolve(configDir(), 'servers.seed.json');
+const parsed = JSON.parse(readFileSync(file, 'utf8')) as { servers: SeedServer[] };
 
 /** Per-slug URL override, e.g. SEED_URL_RS_MCP rewrites rs-mcp for a container network. */
 function urlFor(slug: string, fallback: string): string {
-  const key = `SEED_URL_${slug.toUpperCase().replace(/-/g, "_")}`;
+  const key = `SEED_URL_${slug.toUpperCase().replace(/-/g, '_')}`;
   return process.env[key] ?? fallback;
 }
 

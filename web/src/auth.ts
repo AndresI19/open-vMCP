@@ -12,11 +12,11 @@
  * implementations of it.
  */
 
-const KEY = "platform:identity";
-const AUTH = "/auth";
+const KEY = 'platform:identity';
+const AUTH = '/auth';
 
 export interface Identity {
-  mode: "guest" | "user";
+  mode: 'guest' | 'user';
   username?: string;
   code?: string;
   token?: string;
@@ -48,7 +48,7 @@ function write(id: Identity | null): void {
 }
 
 export const current = (): Identity | null => identity;
-export const isSignedIn = (): boolean => identity?.mode === "user" && Boolean(identity.token);
+export const isSignedIn = (): boolean => identity?.mode === 'user' && Boolean(identity.token);
 
 /**
  * Admin, read from the SIGNED token.
@@ -57,7 +57,7 @@ export const isSignedIn = (): boolean => identity?.mode === "user" && Boolean(id
  * claim — hiding a button is a courtesy, and the lock is on the door, not on the sign. Editing this
  * value in localStorage would reveal the controls and change nothing: the API would still say 403.
  */
-export const isAdmin = (): boolean => identity?.mode === "user" && identity.admin === true;
+export const isAdmin = (): boolean => identity?.mode === 'user' && identity.admin === true;
 
 export function subscribe(fn: () => void): () => void {
   listeners.add(fn);
@@ -66,8 +66,8 @@ export function subscribe(fn: () => void): () => void {
 
 function claims(token: string): Record<string, unknown> {
   try {
-    const seg = token.split(".")[1] ?? "";
-    return JSON.parse(atob(seg.replace(/-/g, "+").replace(/_/g, "/"))) as Record<string, unknown>;
+    const seg = token.split('.')[1] ?? '';
+    return JSON.parse(atob(seg.replace(/-/g, '+').replace(/_/g, '/'))) as Record<string, unknown>;
   } catch {
     return {};
   }
@@ -75,16 +75,16 @@ function claims(token: string): Record<string, unknown> {
 
 export async function signIn(username: string, code: string): Promise<void> {
   const r = await fetch(`${AUTH}/token`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ username, code }),
   });
   const json = (await r.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!r.ok) throw new Error(typeof json.error === "string" ? json.error : `HTTP ${r.status}`);
+  if (!r.ok) throw new Error(typeof json.error === 'string' ? json.error : `HTTP ${r.status}`);
 
   const token = String(json.token);
   write({
-    mode: "user",
+    mode: 'user',
     username: String(json.username),
     code,
     token,
@@ -99,7 +99,7 @@ export function signOut(): void {
 
 /** A live token, re-minted from the stored code when the current one is near expiry. */
 export async function token(): Promise<string | null> {
-  if (!identity || identity.mode !== "user") return null;
+  if (!identity || identity.mode !== 'user') return null;
   if (identity.token && (identity.expiresAt ?? 0) > Date.now() + 60_000) return identity.token;
   if (!identity.username || !identity.code) return null;
   try {

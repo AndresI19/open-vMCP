@@ -1,6 +1,6 @@
-import type { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import type { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
 export interface Session {
   transport: StreamableHTTPServerTransport;
@@ -37,18 +37,14 @@ export async function broadcastToolListChanged(slug?: string): Promise<number> {
     (s) => s.slug === null || slug === undefined || s.slug === slug,
   );
 
-  const settled = await Promise.allSettled(
-    targets.map((s) => s.server.sendToolListChanged()),
-  );
+  const settled = await Promise.allSettled(targets.map((s) => s.server.sendToolListChanged()));
 
-  const delivered = settled.filter((r) => r.status === "fulfilled").length;
+  const delivered = settled.filter((r) => r.status === 'fulfilled').length;
   for (const r of settled) {
-    if (r.status === "rejected") {
+    if (r.status === 'rejected') {
       console.warn(`[tools/list_changed] delivery failed: ${String(r.reason?.message ?? r.reason)}`);
     }
   }
-  console.log(
-    `[tools/list_changed] ${slug ?? "*"} → notified ${delivered}/${targets.length} sessions`,
-  );
+  console.log(`[tools/list_changed] ${slug ?? '*'} → notified ${delivered}/${targets.length} sessions`);
   return delivered;
 }

@@ -1,17 +1,17 @@
-import { Router } from "express";
-import { count, eq, sql } from "drizzle-orm";
-import { db } from "../db/client.js";
-import { toolCalls, mcpServers } from "../db/schema.js";
+import { count, eq, sql } from 'drizzle-orm';
+import { Router } from 'express';
+import { db } from '../db/client.js';
+import { mcpServers, toolCalls } from '../db/schema.js';
 
 export const statsRouter = Router();
 
 /** Headline tiles for the Overview page. */
-statsRouter.get("/overview", async (_req, res) => {
+statsRouter.get('/overview', async (_req, res) => {
   const [{ total }] = await db.select({ total: count() }).from(toolCalls);
   const [{ errors }] = await db
     .select({ errors: count() })
     .from(toolCalls)
-    .where(eq(toolCalls.status, "error"));
+    .where(eq(toolCalls.status, 'error'));
   const [{ uniqueUsers }] = await db
     .select({ uniqueUsers: sql<number>`count(distinct ${toolCalls.userId})` })
     .from(toolCalls);
@@ -32,7 +32,7 @@ statsRouter.get("/overview", async (_req, res) => {
 });
 
 /** Calls grouped by tool, split ok/error — feeds the grouped bar chart. */
-statsRouter.get("/by-tool", async (_req, res) => {
+statsRouter.get('/by-tool', async (_req, res) => {
   const rows = await db
     .select({
       tool: toolCalls.toolName,
@@ -53,8 +53,8 @@ statsRouter.get("/by-tool", async (_req, res) => {
 });
 
 /** Calls bucketed over time — feeds the line chart. */
-statsRouter.get("/timeseries", async (req, res) => {
-  const bucket = req.query.bucket === "day" ? "day" : "hour";
+statsRouter.get('/timeseries', async (req, res) => {
+  const bucket = req.query.bucket === 'day' ? 'day' : 'hour';
   const rows = await db
     .select({
       ts: sql<string>`date_trunc(${bucket}, ${toolCalls.createdAt})`,

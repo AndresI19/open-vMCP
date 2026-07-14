@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Toggle, Tag } from "@carbon/react";
+import { Tag, Toggle } from '@carbon/react';
+import { useState } from 'react';
 
 interface Props {
   /** Stable DOM id — Carbon requires one per Toggle. */
@@ -22,14 +22,7 @@ interface Props {
  * called out with a "mixed" tag plus an n-of-m count. That keeps the action unambiguous:
  * unless everything is already on, flipping it turns everything on.
  */
-export default function MasterToggle({
-  id,
-  noun,
-  total,
-  enabledCount,
-  disabled,
-  onSet,
-}: Props) {
+export default function MasterToggle({ id, noun, total, enabledCount, disabled, onSet }: Props) {
   const [busy, setBusy] = useState(false);
 
   const allOn = total > 0 && enabledCount === total;
@@ -46,7 +39,7 @@ export default function MasterToggle({
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
       <Toggle
         id={id}
         size="sm"
@@ -57,10 +50,8 @@ export default function MasterToggle({
         aria-label={allOn ? `Disable all ${noun}` : `Enable all ${noun}`}
         onToggle={flip}
       />
-      <span style={{ fontWeight: 600 }}>
-        {allOn ? `Disable all ${noun}` : `Enable all ${noun}`}
-      </span>
-      <span style={{ color: "var(--cds-text-secondary)" }}>
+      <span style={{ fontWeight: 600 }}>{allOn ? `Disable all ${noun}` : `Enable all ${noun}`}</span>
+      <span style={{ color: 'var(--cds-text-secondary)' }}>
         {enabledCount} of {total} enabled
       </span>
       {mixed && <Tag type="teal">mixed</Tag>}

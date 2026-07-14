@@ -1,16 +1,16 @@
+import { ScaleTypes } from '@carbon/charts';
+import { GroupedBarChart } from '@carbon/charts-react';
 import {
-  Tile,
+  Pagination,
   Table,
-  TableHead,
-  TableRow,
-  TableHeader,
   TableBody,
   TableCell,
-  Pagination,
-} from "@carbon/react";
-import { GroupedBarChart } from "@carbon/charts-react";
-import { ScaleTypes } from "@carbon/charts";
-import { api, usePoll, usePaged } from "../api";
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tile,
+} from '@carbon/react';
+import { api, usePaged, usePoll } from '../api';
 
 export default function ToolUsage() {
   const { data: tools } = usePoll(api.byTool);
@@ -18,24 +18,24 @@ export default function ToolUsage() {
   const { page, setPage, pageItems } = usePaged(rows);
 
   const chartData = rows.flatMap((t) => [
-    { group: "ok", key: t.tool, value: t.ok },
-    { group: "error", key: t.tool, value: t.errors },
+    { group: 'ok', key: t.tool, value: t.ok },
+    { group: 'error', key: t.tool, value: t.errors },
   ]);
 
   return (
     <>
-      <h1 style={{ marginBottom: "1.5rem" }}>Tool Usage</h1>
+      <h1 style={{ marginBottom: '1.5rem' }}>Tool Usage</h1>
 
-      <Tile style={{ marginBottom: "1.5rem" }}>
+      <Tile style={{ marginBottom: '1.5rem' }}>
         <GroupedBarChart
           data={chartData}
           options={{
-            title: "Calls by tool (ok vs error)",
+            title: 'Calls by tool (ok vs error)',
             axes: {
-              left: { mapsTo: "value", title: "Calls" },
-              bottom: { mapsTo: "key", scaleType: ScaleTypes.LABELS, title: "Tool" },
+              left: { mapsTo: 'value', title: 'Calls' },
+              bottom: { mapsTo: 'key', scaleType: ScaleTypes.LABELS, title: 'Tool' },
             },
-            height: "400px",
+            height: '400px',
           }}
         />
       </Tile>

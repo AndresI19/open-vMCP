@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { ToastNotification } from "@carbon/react";
-import { dismiss, subscribeToasts, type Toast } from "../notify";
+import { ToastNotification } from '@carbon/react';
+import { useEffect, useState } from 'react';
+import { type Toast, dismiss, subscribeToasts } from '../notify';
 
 /**
  * Renders the toast bus (see notify.ts). Mounted once, in App, above the routes — so a permission
@@ -13,7 +13,14 @@ export default function Toasts() {
 
   return (
     <div
-      style={{ position: "fixed", top: "3.5rem", right: "1rem", zIndex: 9000, display: "grid", gap: "0.5rem" }}
+      style={{
+        position: 'fixed',
+        top: '3.5rem',
+        right: '1rem',
+        zIndex: 9000,
+        display: 'grid',
+        gap: '0.5rem',
+      }}
     >
       {toasts.map((t) => (
         <ToastNotification

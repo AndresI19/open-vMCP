@@ -1,4 +1,4 @@
-import { Tag } from "@carbon/react";
+import { Tag } from '@carbon/react';
 
 /**
  * How a tool call is rendered. Shared, because it was not: Recent Calls decided a call's colour with
@@ -7,21 +7,21 @@ import { Tag } from "@carbon/react";
  * one page and as a red failure on the other. A policy-blocked tool is not an error; the gateway did
  * exactly what it was told to do.
  */
-export type CallStatus = "ok" | "error" | "blocked" | (string & {});
+export type CallStatus = 'ok' | 'error' | 'blocked' | (string & {});
 
-const STATUS_TAG: Record<string, "green" | "red" | "warm-gray"> = {
-  ok: "green",
-  blocked: "warm-gray",
-  error: "red",
+const STATUS_TAG: Record<string, 'green' | 'red' | 'warm-gray'> = {
+  ok: 'green',
+  blocked: 'warm-gray',
+  error: 'red',
 };
 
 export function StatusTag({ status }: { status: CallStatus }) {
   // Anything unrecognised is treated as a failure rather than silently rendered green.
-  return <Tag type={STATUS_TAG[status] ?? "red"}>{status}</Tag>;
+  return <Tag type={STATUS_TAG[status] ?? 'red'}>{status}</Tag>;
 }
 
 /** Placeholder for an absent value. One dash, so the tables do not disagree about which dash. */
-export const DASH = "—";
+export const DASH = '—';
 
 export const fmtTime = (iso: string): string => new Date(iso).toLocaleTimeString();
 

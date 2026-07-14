@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
-import { db } from "../db/client.js";
-import { mcpServers } from "../db/schema.js";
+import { eq } from 'drizzle-orm';
+import { db } from '../db/client.js';
+import { mcpServers } from '../db/schema.js';
 
 export type ServerRow = typeof mcpServers.$inferSelect;
 
@@ -33,10 +33,7 @@ export async function allServers(): Promise<ServerRow[]> {
 }
 
 /** Resolve a slug to a server the given user is allowed to see, or null. */
-export async function findVisibleServer(
-  userId: string | null,
-  slug: string,
-): Promise<ServerRow | null> {
+export async function findVisibleServer(userId: string | null, slug: string): Promise<ServerRow | null> {
   const servers = await visibleServers(userId);
   return servers.find((s) => s.slug === slug) ?? null;
 }

@@ -5,7 +5,7 @@ const SECRET_KEY = /(pass|secret|token|api[-_]?key|authorization|auth|credential
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const JWT = /^ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$/;
 
-const MASK = "[REDACTED]";
+const MASK = '[REDACTED]';
 
 /**
  * Deep-copy `value`, replacing anything that looks like a secret/PII with a mask.
@@ -15,7 +15,7 @@ export function redactArgs(value: unknown): { value: unknown; redacted: boolean 
   let redacted = false;
 
   const walk = (v: unknown, keyHint?: string): unknown => {
-    if (typeof v === "string") {
+    if (typeof v === 'string') {
       if ((keyHint && SECRET_KEY.test(keyHint)) || EMAIL.test(v) || JWT.test(v)) {
         redacted = true;
         return MASK;
@@ -23,7 +23,7 @@ export function redactArgs(value: unknown): { value: unknown; redacted: boolean 
       return v;
     }
     if (Array.isArray(v)) return v.map((x) => walk(x));
-    if (v !== null && typeof v === "object") {
+    if (v !== null && typeof v === 'object') {
       const out: Record<string, unknown> = {};
       for (const [k, val] of Object.entries(v)) {
         if (SECRET_KEY.test(k)) {

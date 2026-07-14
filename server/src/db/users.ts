@@ -1,6 +1,6 @@
-import { sql } from "drizzle-orm";
-import { db } from "./client.js";
-import { users } from "./schema.js";
+import { sql } from 'drizzle-orm';
+import { db } from './client.js';
+import { users } from './schema.js';
 
 export type UserRow = typeof users.$inferSelect;
 

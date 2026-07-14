@@ -1,6 +1,6 @@
-import { authHeaders, isAdmin, isSignedIn } from "./auth";
-import { notify } from "./notify";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from 'react';
+import { authHeaders, isAdmin, isSignedIn } from './auth';
+import { notify } from './notify';
 
 export interface Overview {
   totalCalls: number;
@@ -78,21 +78,21 @@ export interface AggTool {
 // at RUNTIME from /vmcp/config.json — see setApiBase, called by main.tsx before the app renders.
 // Runtime rather than build-time on purpose: the same image then runs locally and in production, and
 // the hostname is a deploy concern, not a compile-time one.
-let BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+let BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 /** Point every subsequent API call at `base` (an absolute origin). Empty/undefined keeps the default. */
 export function setApiBase(base: string | undefined): void {
-  if (base) BASE = base.replace(/\/$/, "");
+  if (base) BASE = base.replace(/\/$/, '');
 }
 
 // The MCP endpoint we advertise to clients on the Overview page. Same runtime-config reasoning as
 // BASE above: empty means same-origin (`/mcp` behind whatever proxy served this page), and the
 // deployment supplies the public host. It is deliberately NOT the in-cluster Service address — that
 // only resolves for cluster members, and the client reading this string runs outside the cluster.
-let MCP = "";
+let MCP = '';
 
 export function setMcpUrl(url: string | undefined): void {
-  if (url) MCP = url.replace(/\/$/, "");
+  if (url) MCP = url.replace(/\/$/, '');
 }
 
 /** The endpoint an external MCP client should connect to. Absolute in production, same-origin locally. */
@@ -124,14 +124,14 @@ const send = async (path: string, init: RequestInit = {}): Promise<Response> => 
     notify(
       isSignedIn()
         ? {
-            kind: "error",
-            title: "Not allowed",
-            subtitle: "Changing the registry needs an admin. You are signed in without that role.",
+            kind: 'error',
+            title: 'Not allowed',
+            subtitle: 'Changing the registry needs an admin. You are signed in without that role.',
           }
         : {
-            kind: "error",
-            title: "Sign in first",
-            subtitle: "Sign in (top-right) to make changes.",
+            kind: 'error',
+            title: 'Sign in first',
+            subtitle: 'Sign in (top-right) to make changes.',
           },
     );
     return new Response(null, { status: isSignedIn() ? 403 : 401 });
@@ -145,68 +145,66 @@ const send = async (path: string, init: RequestInit = {}): Promise<Response> => 
   // server no longer honours, still surfaces here rather than failing in silence.
   if (res.status === 403) {
     notify({
-      kind: "error",
-      title: "Not allowed",
-      subtitle: "Changing the registry needs an admin. You are signed in without that role.",
+      kind: 'error',
+      title: 'Not allowed',
+      subtitle: 'Changing the registry needs an admin. You are signed in without that role.',
     });
   } else if (res.status === 401) {
     notify({
-      kind: "error",
-      title: isSignedIn() ? "Session expired" : "Sign in first",
+      kind: 'error',
+      title: isSignedIn() ? 'Session expired' : 'Sign in first',
       subtitle: isSignedIn()
-        ? "Your token has expired — sign in again from the top-right."
-        : "Sign in (top-right) to make changes.",
+        ? 'Your token has expired — sign in again from the top-right.'
+        : 'Sign in (top-right) to make changes.',
     });
   }
   return res;
 };
 
 export const api = {
-  overview: () => get<Overview>("/api/stats/overview"),
-  byTool: () => get<ToolStat[]>("/api/stats/by-tool"),
-  timeseries: (bucket = "hour") => get<TimePoint[]>(`/api/stats/timeseries?bucket=${bucket}`),
-  servers: () => get<ServerRow[]>("/api/servers"),
-  users: () => get<UserRow[]>("/api/users"),
+  overview: () => get<Overview>('/api/stats/overview'),
+  byTool: () => get<ToolStat[]>('/api/stats/by-tool'),
+  timeseries: (bucket = 'hour') => get<TimePoint[]>(`/api/stats/timeseries?bucket=${bucket}`),
+  servers: () => get<ServerRow[]>('/api/servers'),
+  users: () => get<UserRow[]>('/api/users'),
   calls: (limit = 100) => get<CallRow[]>(`/api/calls?limit=${limit}`),
   createServer: (body: Record<string, unknown>) =>
-    send("/api/servers", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
+    send('/api/servers', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }),
   patchServer: (id: string, body: Record<string, unknown>) =>
     send(`/api/servers/${id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }),
-  deleteServer: (id: string) => send(`/api/servers/${id}`, { method: "DELETE" }),
+  deleteServer: (id: string) => send(`/api/servers/${id}`, { method: 'DELETE' }),
   /** Master switch: enable/disable every registered server in one write. */
   setAllServersEnabled: (enabled: boolean) =>
-    send("/api/servers", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
+    send('/api/servers', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ enabled }),
     }),
   server: (id: string) => get<ServerRow>(`/api/servers/${id}`),
   serverTools: (id: string) => get<{ tools: ToolInfo[] }>(`/api/servers/${id}/tools`),
   setToolEnabled: (id: string, tool: string, enabled: boolean) =>
     send(`/api/servers/${id}/tools/${encodeURIComponent(tool)}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ enabled }),
     }),
   /** Master switch: enable/disable many of one server's tools in one write. */
   setServerToolsEnabled: (id: string, tools: string[], enabled: boolean) =>
     send(`/api/servers/${id}/tools`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ enabled, tools }),
     }),
-  callsForServer: (id: string, limit = 100) =>
-    get<CallRow[]>(`/api/calls?serverId=${id}&limit=${limit}`),
-  allTools: () =>
-    get<{ tools: AggTool[]; errors: { slug: string; error: string }[] }>("/api/tools"),
+  callsForServer: (id: string, limit = 100) => get<CallRow[]>(`/api/calls?serverId=${id}&limit=${limit}`),
+  allTools: () => get<{ tools: AggTool[]; errors: { slug: string; error: string }[] }>('/api/tools'),
 };
 
 /** Poll a fetcher on an interval; returns latest data, error, and a manual refresh. */

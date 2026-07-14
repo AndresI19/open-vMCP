@@ -1,11 +1,11 @@
-import { Router } from "express";
-import { z } from "zod";
-import { eq, sql } from "drizzle-orm";
-import { db } from "../db/client.js";
-import { mcpServers } from "../db/schema.js";
-import { connectUpstream } from "../mcp/upstream.js";
-import { broadcastToolListChanged } from "../mcp/sessions.js";
-import { setToolEnabled, setToolsEnabled, toolSettingsMap } from "../registry/tools.js";
+import { eq, sql } from 'drizzle-orm';
+import { Router } from 'express';
+import { z } from 'zod';
+import { db } from '../db/client.js';
+import { mcpServers } from '../db/schema.js';
+import { broadcastToolListChanged } from '../mcp/sessions.js';
+import { connectUpstream } from '../mcp/upstream.js';
+import { setToolEnabled, setToolsEnabled, toolSettingsMap } from '../registry/tools.js';
 
 export const serversRouter = Router();
 
@@ -20,10 +20,10 @@ const baseSchema = z.object({
   slug: z
     .string()
     .min(1)
-    .regex(/^[a-z0-9-]+$/, "slug must be lowercase alphanumeric with dashes"),
+    .regex(/^[a-z0-9-]+$/, 'slug must be lowercase alphanumeric with dashes'),
   name: z.string().min(1),
   url: z.string().url(),
-  transport: z.enum(["sse", "streamable-http"]).default("sse"),
+  transport: z.enum(['sse', 'streamable-http']).default('sse'),
   enabled: z.boolean().default(true),
   forwardAuth: z.boolean().default(false),
 });
@@ -31,12 +31,12 @@ const baseSchema = z.object({
 const createSchema = baseSchema;
 
 /** List every registered server (enabled or not) — the control-plane table. */
-serversRouter.get("/", async (_req, res) => {
+serversRouter.get('/', async (_req, res) => {
   const rows = await db.select().from(mcpServers).orderBy(mcpServers.createdAt);
   res.json(rows);
 });
 
-serversRouter.post("/", async (req, res) => {
+serversRouter.post('/', async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
@@ -55,7 +55,7 @@ serversRouter.post("/", async (req, res) => {
  * Enable or disable every registered server at once — the dashboard's master switch.
  * Declared before "/:id" so the bare path is not swallowed by the id parameter.
  */
-serversRouter.patch("/", async (req, res) => {
+serversRouter.patch('/', async (req, res) => {
   const parsed = z.object({ enabled: z.boolean() }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
@@ -70,7 +70,7 @@ serversRouter.patch("/", async (req, res) => {
   res.json({ ok: true, updated: rows.length });
 });
 
-serversRouter.patch("/:id", async (req, res) => {
+serversRouter.patch('/:id', async (req, res) => {
   const parsed = baseSchema.partial().safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
@@ -82,7 +82,7 @@ serversRouter.patch("/:id", async (req, res) => {
     .where(eq(mcpServers.id, String(req.params.id)))
     .returning();
   if (!row) {
-    res.status(404).json({ error: "not found" });
+    res.status(404).json({ error: 'not found' });
     return;
   }
   // A slug rename orphans sessions bound to the old slug, which this row no longer names,
@@ -91,13 +91,13 @@ serversRouter.patch("/:id", async (req, res) => {
   res.json(row);
 });
 
-serversRouter.delete("/:id", async (req, res) => {
+serversRouter.delete('/:id', async (req, res) => {
   const [row] = await db
     .delete(mcpServers)
     .where(eq(mcpServers.id, String(req.params.id)))
     .returning();
   if (!row) {
-    res.status(404).json({ error: "not found" });
+    res.status(404).json({ error: 'not found' });
     return;
   }
   await broadcastToolListChanged(row.slug);
@@ -105,30 +105,30 @@ serversRouter.delete("/:id", async (req, res) => {
 });
 
 /** Single server row (for the detail page header). */
-serversRouter.get("/:id", async (req, res) => {
+serversRouter.get('/:id', async (req, res) => {
   const [row] = await db
     .select()
     .from(mcpServers)
     .where(eq(mcpServers.id, String(req.params.id)));
   if (!row) {
-    res.status(404).json({ error: "not found" });
+    res.status(404).json({ error: 'not found' });
     return;
   }
   res.json(row);
 });
 
 /** Live tools + descriptions from the upstream, merged with per-tool enabled state. */
-serversRouter.get("/:id/tools", async (req, res) => {
+serversRouter.get('/:id/tools', async (req, res) => {
   const [row] = await db
     .select()
     .from(mcpServers)
     .where(eq(mcpServers.id, String(req.params.id)));
   if (!row) {
-    res.status(404).json({ error: "not found" });
+    res.status(404).json({ error: 'not found' });
     return;
   }
 
-  let upstream;
+  let upstream: Awaited<ReturnType<typeof connectUpstream>>;
   try {
     upstream = await connectUpstream(row);
   } catch (err) {
@@ -141,7 +141,7 @@ serversRouter.get("/:id/tools", async (req, res) => {
     const settings = await toolSettingsMap(row.id);
     const tools = listed.tools.map((t) => ({
       name: t.name,
-      description: t.description ?? "",
+      description: t.description ?? '',
       inputSchema: t.inputSchema,
       enabled: settings.get(t.name) ?? true,
     }));
@@ -154,7 +154,7 @@ serversRouter.get("/:id/tools", async (req, res) => {
 });
 
 /** Enable/disable many of a server's tools in one write — the per-server master switch. */
-serversRouter.patch("/:id/tools", async (req, res) => {
+serversRouter.patch('/:id/tools', async (req, res) => {
   const parsed = z
     .object({ enabled: z.boolean(), tools: z.array(z.string().min(1)).min(1) })
     .safeParse(req.body);
@@ -162,18 +162,14 @@ serversRouter.patch("/:id/tools", async (req, res) => {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const updated = await setToolsEnabled(
-    String(req.params.id),
-    parsed.data.tools,
-    parsed.data.enabled,
-  );
+  const updated = await setToolsEnabled(String(req.params.id), parsed.data.tools, parsed.data.enabled);
   const slug = await slugFor(String(req.params.id));
   if (slug) await broadcastToolListChanged(slug);
   res.json({ ok: true, updated });
 });
 
 /** Enable/disable a single tool for a server. */
-serversRouter.patch("/:id/tools/:toolName", async (req, res) => {
+serversRouter.patch('/:id/tools/:toolName', async (req, res) => {
   const parsed = z.object({ enabled: z.boolean() }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });

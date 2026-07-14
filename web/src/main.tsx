@@ -1,13 +1,13 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import "@carbon/styles/css/styles.css";
-import "@carbon/charts-react/styles.css";
-import "./app.css"; // last, so its header overrides win over Carbon's defaults
-import App from "./App";
-import { setApiBase, setMcpUrl } from "./api";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import '@carbon/styles/css/styles.css';
+import '@carbon/charts-react/styles.css';
+import './app.css'; // last, so its header overrides win over Carbon's defaults
+import App from './App';
+import { setApiBase, setMcpUrl } from './api';
 
-const PREFIX = import.meta.env.BASE_URL.replace(/\/$/, "");
+const PREFIX = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 /**
  * Resolve the API origin BEFORE the first render. The pages start polling as soon as they mount, so
@@ -29,7 +29,7 @@ async function boot(): Promise<void> {
     /* same-origin default stands */
   }
 
-  ReactDOM.createRoot(document.getElementById("root")!).render(
+  ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <BrowserRouter basename={PREFIX}>
         <App />

@@ -1,19 +1,19 @@
-import { Router } from "express";
-import { and, desc, eq, type SQL } from "drizzle-orm";
-import { db } from "../db/client.js";
-import { toolCalls, users, mcpServers } from "../db/schema.js";
+import { type SQL, and, desc, eq } from 'drizzle-orm';
+import { Router } from 'express';
+import { db } from '../db/client.js';
+import { mcpServers, toolCalls, users } from '../db/schema.js';
 
 export const callsRouter = Router();
 
 /** Recent tool calls with user + server names — feeds the Recent Calls table. */
-callsRouter.get("/", async (req, res) => {
+callsRouter.get('/', async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 500);
 
   const filters: SQL[] = [];
-  if (typeof req.query.tool === "string") filters.push(eq(toolCalls.toolName, req.query.tool));
-  if (typeof req.query.serverId === "string") filters.push(eq(toolCalls.serverId, req.query.serverId));
-  if (typeof req.query.userId === "string") filters.push(eq(toolCalls.userId, req.query.userId));
-  if (typeof req.query.status === "string") filters.push(eq(toolCalls.status, req.query.status));
+  if (typeof req.query.tool === 'string') filters.push(eq(toolCalls.toolName, req.query.tool));
+  if (typeof req.query.serverId === 'string') filters.push(eq(toolCalls.serverId, req.query.serverId));
+  if (typeof req.query.userId === 'string') filters.push(eq(toolCalls.userId, req.query.userId));
+  if (typeof req.query.status === 'string') filters.push(eq(toolCalls.status, req.query.status));
 
   const rows = await db
     .select({

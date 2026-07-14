@@ -1,13 +1,5 @@
-import {
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
-  Pagination,
-} from "@carbon/react";
-import { api, usePoll, usePaged } from "../api";
+import { Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
+import { api, usePaged, usePoll } from '../api';
 
 export default function Users() {
   const { data } = usePoll(api.users, 8000);
@@ -16,8 +8,8 @@ export default function Users() {
 
   return (
     <>
-      <h1 style={{ marginBottom: "1.5rem" }}>Users</h1>
-      <p style={{ color: "var(--cds-text-secondary)", marginBottom: "1.5rem" }}>
+      <h1 style={{ marginBottom: '1.5rem' }}>Users</h1>
+      <p style={{ color: 'var(--cds-text-secondary)', marginBottom: '1.5rem' }}>
         Identities decoded from the bearer token on each proxied call.
       </p>
       <Table size="lg">

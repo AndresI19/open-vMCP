@@ -1,13 +1,13 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
   type CallToolResult,
-} from "@modelcontextprotocol/sdk/types.js";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { ServerRow } from "../registry/index.js";
-import { disabledToolNames } from "../registry/tools.js";
-import { recordToolCall } from "./telemetry.js";
+  ListToolsRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
+import type { ServerRow } from '../registry/index.js';
+import { disabledToolNames } from '../registry/tools.js';
+import { recordToolCall } from './telemetry.js';
 
 export interface ProxyContext {
   server: ServerRow;
@@ -22,9 +22,9 @@ export function previewText(result: CallToolResult): string | undefined {
   const content = result.content;
   if (!Array.isArray(content)) return undefined;
   const text = content
-    .filter((c) => c.type === "text")
+    .filter((c) => c.type === 'text')
     .map((c) => (c as { text: string }).text)
-    .join("\n");
+    .join('\n');
   if (!text) return undefined;
   return text.length > 2000 ? `${text.slice(0, 2000)}…` : text;
 }
@@ -35,7 +35,7 @@ export function previewText(result: CallToolResult): string | undefined {
  */
 export function buildProxyServer(ctx: ProxyContext): Server {
   const server = new Server(
-    { name: `vmcp:${ctx.server.slug}`, version: "0.1.0" },
+    { name: `vmcp:${ctx.server.slug}`, version: '0.1.0' },
     // listChanged: per-tool policy can flip while a session is open — see sessions.ts.
     { capabilities: { tools: { listChanged: true } } },
   );
@@ -47,7 +47,7 @@ export function buildProxyServer(ctx: ProxyContext): Server {
     const tools = listed.tools.filter((t) => !disabled.has(t.name));
     console.log(
       `[tools/list] ${ctx.server.slug} → ${tools.length}/${listed.tools.length} tools ` +
-        `(user=${ctx.externalUserId ?? "-"})`,
+        `(user=${ctx.externalUserId ?? '-'})`,
     );
     return { ...listed, tools };
   });
@@ -68,17 +68,17 @@ export function buildProxyServer(ctx: ProxyContext): Server {
         sessionId: ctx.sessionId(),
         toolName,
         args,
-        status: "blocked",
-        errorMessage: "tool disabled by gateway policy",
+        status: 'blocked',
+        errorMessage: 'tool disabled by gateway policy',
         latencyMs: 0,
         requestedAt,
         respondedAt: new Date(),
       });
       console.log(
-        `[tools/call] ${ctx.server.slug}/${toolName} user=${ctx.externalUserId ?? "-"} status=blocked`,
+        `[tools/call] ${ctx.server.slug}/${toolName} user=${ctx.externalUserId ?? '-'} status=blocked`,
       );
       return {
-        content: [{ type: "text", text: `Tool "${toolName}" is disabled by the gateway.` }],
+        content: [{ type: 'text', text: `Tool "${toolName}" is disabled by the gateway.` }],
         isError: true,
       };
     }
@@ -98,7 +98,7 @@ export function buildProxyServer(ctx: ProxyContext): Server {
         sessionId: ctx.sessionId(),
         toolName,
         args,
-        status: isError ? "error" : "ok",
+        status: isError ? 'error' : 'ok',
         errorMessage: isError ? preview : undefined,
         latencyMs,
         requestedAt,
@@ -107,8 +107,8 @@ export function buildProxyServer(ctx: ProxyContext): Server {
       });
 
       console.log(
-        `[tools/call] ${ctx.server.slug}/${toolName} user=${ctx.externalUserId ?? "-"} ` +
-          `status=${isError ? "error" : "ok"} ${latencyMs}ms`,
+        `[tools/call] ${ctx.server.slug}/${toolName} user=${ctx.externalUserId ?? '-'} ` +
+          `status=${isError ? 'error' : 'ok'} ${latencyMs}ms`,
       );
       return result;
     } catch (err) {
@@ -119,14 +119,14 @@ export function buildProxyServer(ctx: ProxyContext): Server {
         sessionId: ctx.sessionId(),
         toolName,
         args,
-        status: "error",
+        status: 'error',
         errorMessage: err instanceof Error ? err.message : String(err),
         latencyMs,
         requestedAt,
         respondedAt: new Date(),
       });
       console.log(
-        `[tools/call] ${ctx.server.slug}/${toolName} user=${ctx.externalUserId ?? "-"} ` +
+        `[tools/call] ${ctx.server.slug}/${toolName} user=${ctx.externalUserId ?? '-'} ` +
           `status=error ${latencyMs}ms (${err instanceof Error ? err.message : String(err)})`,
       );
       throw err;
