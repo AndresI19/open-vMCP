@@ -21,6 +21,13 @@ export const NS = '__';
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
 
+/**
+ * Collapse newlines and tabs before a user-controlled value (a qualified tool name, a user id, an
+ * upstream error string) reaches a log line, so a crafted value cannot forge extra log entries —
+ * CWE-117, log injection. Every dynamic value interpolated into the logs below passes through here.
+ */
+const s1 = (v: unknown): string => String(v ?? '').replace(/[\n\r\t]/g, ' ');
+
 export interface AggregateTool extends Tool {
   /** Which upstream this tool came from, before the name was qualified. */
   serverSlug: string;
@@ -132,11 +139,11 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     const { tools, errors } = await collectTools(ctx.userId, ctx.bearer);
     for (const e of errors) {
-      console.warn(`[aggregate tools/list] skipped ${e.slug}: ${e.error}`);
+      console.warn(`[aggregate tools/list] skipped ${s1(e.slug)}: ${s1(e.error)}`);
     }
     console.log(
       `[aggregate tools/list] → ${tools.length} tools from ${new Set(tools.map((t) => t.serverSlug)).size} servers ` +
-        `(user=${ctx.userId ?? '-'})`,
+        `(user=${s1(ctx.userId ?? '-')})`,
     );
     // serverSlug is gateway bookkeeping, not part of the MCP Tool shape.
     return { tools: tools.map(({ serverSlug: _slug, ...tool }) => tool) };
@@ -149,7 +156,7 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
     const start = performance.now();
 
     if (!ctx.userId && identityRequired()) {
-      console.log(`[aggregate tools/call] ${qualified} user=- status=unauthorized`);
+      console.log(`[aggregate tools/call] ${s1(qualified)} user=- status=unauthorized`);
       return {
         content: [
           {
@@ -182,8 +189,8 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
           respondedAt: new Date(),
         });
         console.log(
-          `[aggregate tools/call] ${hidden.server.slug}/${hidden.toolName} ` +
-            `user=${ctx.userId ?? '-'} status=blocked (server disabled)`,
+          `[aggregate tools/call] ${s1(hidden.server.slug)}/${s1(hidden.toolName)} ` +
+            `user=${s1(ctx.userId ?? '-')} status=blocked (server disabled)`,
         );
         return {
           content: [
@@ -196,7 +203,7 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
         };
       }
 
-      console.log(`[aggregate tools/call] ${qualified} user=${ctx.userId ?? '-'} status=unknown`);
+      console.log(`[aggregate tools/call] ${s1(qualified)} user=${s1(ctx.userId ?? '-')} status=unknown`);
       return {
         content: [
           {
@@ -224,7 +231,9 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
         requestedAt,
         respondedAt: new Date(),
       });
-      console.log(`[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? '-'} status=blocked`);
+      console.log(
+        `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=blocked`,
+      );
       return {
         content: [{ type: 'text', text: `Tool "${toolName}" is disabled by the gateway.` }],
         isError: true,
@@ -253,7 +262,7 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
         respondedAt: new Date(),
       });
       console.log(
-        `[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? '-'} status=error (${message})`,
+        `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=error (${s1(message)})`,
       );
       return {
         content: [{ type: 'text', text: `Upstream connect failed: ${message}` }],
@@ -285,7 +294,7 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
       });
 
       console.log(
-        `[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? '-'} ` +
+        `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
           `status=${isError ? 'error' : 'ok'} ${latencyMs}ms`,
       );
       return result;
@@ -304,8 +313,8 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
         respondedAt: new Date(),
       });
       console.log(
-        `[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? '-'} ` +
-          `status=error ${latencyMs}ms (${err instanceof Error ? err.message : String(err)})`,
+        `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
+          `status=error ${latencyMs}ms (${s1(err instanceof Error ? err.message : String(err))})`,
       );
       throw err;
     } finally {

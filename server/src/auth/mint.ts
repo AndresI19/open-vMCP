@@ -3,6 +3,10 @@ import { loadAuthConfig } from '../config/load.js';
 /** Set a value at a dot-path, creating intermediate objects as needed. */
 function setByPath(obj: Record<string, unknown>, path: string, value: unknown): void {
   const keys = path.split('.');
+  // Never let a path segment reach into the prototype chain. The path is developer-supplied config
+  // today, not user input, but this two-line guard closes the prototype-pollution class outright and
+  // costs nothing.
+  if (keys.some((k) => k === '__proto__' || k === 'constructor' || k === 'prototype')) return;
   let cur = obj;
   for (let i = 0; i < keys.length - 1; i++) {
     const k = keys[i];
