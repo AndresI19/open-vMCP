@@ -1,0 +1,9 @@
+# gitleaks config: the full default rule set, plus a surgical allowlist.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Unsigned alg:none mock JWT used only by the e2e smoke test. It has no signature, carries only {\"user\":\"andres\"}, and grants nothing — the gateway's own auth is mock/unverified (see CLAUDE.md). Allowlisted by exact value, so a real secret added to that same file still trips."
+regexes = [
+  '''eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0\.eyJ1c2VyIjoiYW5kcmVzIn0\.''',
+]
