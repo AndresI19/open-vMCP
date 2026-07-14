@@ -1,5 +1,5 @@
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
-import type { AuthConfig } from "../config/load.js";
+import { type JWTPayload, createRemoteJWKSet, jwtVerify } from 'jose';
+import type { AuthConfig } from '../config/load.js';
 
 /**
  * Real signature verification. Until now this did not exist — and its absence was a trap.
@@ -44,7 +44,7 @@ export async function verifyToken(token: string, cfg: AuthConfig): Promise<JWTPa
     // Refusing to run rather than silently falling back to decode-only. A deployment that asked for
     // verification and did not say where the keys live is misconfigured, and pretending otherwise is
     // how you end up believing you are verifying when you are not.
-    throw new Error("auth.verify is true but auth.jwksUri is not set");
+    throw new Error('auth.verify is true but auth.jwksUri is not set');
   }
 
   const { payload } = await jwtVerify(token, jwkSet(cfg.jwksUri), {
@@ -53,7 +53,7 @@ export async function verifyToken(token: string, cfg: AuthConfig): Promise<JWTPa
     // Only RS256. Left open, `jose` would honour whatever the token's own header asked for — and a
     // token can ask for `none`. Pinning the algorithm here is what stops a forged header from
     // choosing its own verification rules.
-    algorithms: ["RS256"],
+    algorithms: ['RS256'],
   });
 
   return payload;

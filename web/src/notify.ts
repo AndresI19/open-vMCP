@@ -11,7 +11,7 @@
 
 export interface Toast {
   id: number;
-  kind: "error" | "info" | "success";
+  kind: 'error' | 'info' | 'success';
   title: string;
   subtitle?: string;
 }
@@ -30,7 +30,7 @@ export function subscribeToasts(fn: (toasts: Toast[]) => void): () => void {
   return () => listeners.delete(fn);
 }
 
-export function notify(t: Omit<Toast, "id">): void {
+export function notify(t: Omit<Toast, 'id'>): void {
   const toast = { ...t, id: ++seq };
   toasts = [...toasts, toast];
   emit();

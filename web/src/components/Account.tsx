@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Button, PasswordInput, Tag, TextInput } from "@carbon/react";
-import { current, isAdmin, signIn, signOut, subscribe } from "../auth";
+import { Button, PasswordInput, Tag, TextInput } from '@carbon/react';
+import { useEffect, useState } from 'react';
+import { current, isAdmin, signIn, signOut, subscribe } from '../auth';
 
 /**
  * The account control, top-right of the header.
@@ -16,8 +16,8 @@ import { current, isAdmin, signIn, signOut, subscribe } from "../auth";
 export default function Account() {
   const [, force] = useState(0);
   const [open, setOpen] = useState(false);
-  const [username, setUsername] = useState("");
-  const [code, setCode] = useState("");
+  const [username, setUsername] = useState('');
+  const [code, setCode] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
 
@@ -30,23 +30,34 @@ export default function Account() {
     try {
       await signIn(username, code);
       setOpen(false);
-      setCode("");
+      setCode('');
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "could not sign in");
+      setErr(e instanceof Error ? e.message : 'could not sign in');
     }
   };
 
   return (
     <div className="acct">
-      <button className="acct-chip" onClick={() => { setOpen((o) => !o); setRevealed(false); }}>
-        <span className={`acct-dot ${id?.mode ?? "none"}`} />
-        {id?.mode === "user" ? id.username : "Sign in"}
-        {isAdmin() && <Tag type="blue" size="sm">admin</Tag>}
+      <button
+        type="button"
+        className="acct-chip"
+        onClick={() => {
+          setOpen((o) => !o);
+          setRevealed(false);
+        }}
+      >
+        <span className={`acct-dot ${id?.mode ?? 'none'}`} />
+        {id?.mode === 'user' ? id.username : 'Sign in'}
+        {isAdmin() && (
+          <Tag type="blue" size="sm">
+            admin
+          </Tag>
+        )}
       </button>
 
       {open && (
         <div className="acct-panel">
-          {id?.mode === "user" ? (
+          {id?.mode === 'user' ? (
             <>
               <div className="acct-row">
                 <span>Username</span>
@@ -55,17 +66,26 @@ export default function Account() {
               <div className="acct-row">
                 <span>Code</span>
                 {revealed ? (
-                  <code className="acct-code">{id.code ?? "—"}</code>
+                  <code className="acct-code">{id.code ?? '—'}</code>
                 ) : (
-                  <button className="acct-link" onClick={() => setRevealed(true)}>Show</button>
+                  <button type="button" className="acct-link" onClick={() => setRevealed(true)}>
+                    Show
+                  </button>
                 )}
               </div>
               <p className="acct-note">
                 {isAdmin()
-                  ? "You can change the registry. Everyone else sees it read-only."
-                  : "Reads only. Changing anything here needs an admin."}
+                  ? 'You can change the registry. Everyone else sees it read-only.'
+                  : 'Reads only. Changing anything here needs an admin.'}
               </p>
-              <Button kind="ghost" size="sm" onClick={() => { signOut(); location.reload(); }}>
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => {
+                  signOut();
+                  location.reload();
+                }}
+              >
                 Sign out
               </Button>
             </>
@@ -88,12 +108,11 @@ export default function Account() {
                 onChange={(e) => setCode(e.target.value)}
               />
               {err && <p className="acct-err">{err}</p>}
-              <Button size="sm" onClick={() => void doSignIn()} style={{ marginTop: "0.5rem" }}>
+              <Button size="sm" onClick={() => void doSignIn()} style={{ marginTop: '0.5rem' }}>
                 Sign in
               </Button>
               <p className="acct-note">
-                No account? Create one on the quiz or the home page — it is the same identity
-                everywhere.
+                No account? Create one on the quiz or the home page — it is the same identity everywhere.
               </p>
             </>
           )}

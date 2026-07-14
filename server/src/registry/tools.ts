@@ -1,6 +1,6 @@
-import { and, eq, sql } from "drizzle-orm";
-import { db } from "../db/client.js";
-import { toolSettings } from "../db/schema.js";
+import { and, eq, sql } from 'drizzle-orm';
+import { db } from '../db/client.js';
+import { toolSettings } from '../db/schema.js';
 
 /** Names of tools explicitly disabled for a server (absence of a row = enabled). */
 export async function disabledToolNames(serverId: string): Promise<Set<string>> {
@@ -18,11 +18,7 @@ export async function toolSettingsMap(serverId: string): Promise<Map<string, boo
 }
 
 /** Upsert a tool's enabled flag. */
-export async function setToolEnabled(
-  serverId: string,
-  toolName: string,
-  enabled: boolean,
-): Promise<void> {
+export async function setToolEnabled(serverId: string, toolName: string, enabled: boolean): Promise<void> {
   await setToolsEnabled(serverId, [toolName], enabled);
 }
 

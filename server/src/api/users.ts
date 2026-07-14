@@ -1,12 +1,12 @@
-import { Router } from "express";
-import { eq, sql } from "drizzle-orm";
-import { db } from "../db/client.js";
-import { users, toolCalls } from "../db/schema.js";
+import { eq, sql } from 'drizzle-orm';
+import { Router } from 'express';
+import { db } from '../db/client.js';
+import { toolCalls, users } from '../db/schema.js';
 
 export const usersRouter = Router();
 
 /** Users seen so far, with their call counts — feeds the Users table. */
-usersRouter.get("/", async (_req, res) => {
+usersRouter.get('/', async (_req, res) => {
   const rows = await db
     .select({
       id: users.id,

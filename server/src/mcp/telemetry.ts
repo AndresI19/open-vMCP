@@ -1,9 +1,9 @@
-import { db } from "../db/client.js";
-import { toolCalls } from "../db/schema.js";
-import { ensureUser } from "../db/users.js";
-import { redactArgs } from "./redact.js";
+import { db } from '../db/client.js';
+import { toolCalls } from '../db/schema.js';
+import { ensureUser } from '../db/users.js';
+import { redactArgs } from './redact.js';
 
-const REDACT = (process.env.REDACT_ARGS ?? "true") !== "false";
+const REDACT = (process.env.REDACT_ARGS ?? 'true') !== 'false';
 
 export interface ToolCallRecord {
   serverId: string;
@@ -11,7 +11,7 @@ export interface ToolCallRecord {
   sessionId: string | null;
   toolName: string;
   args: unknown;
-  status: "ok" | "error" | "blocked";
+  status: 'ok' | 'error' | 'blocked';
   errorMessage?: string;
   latencyMs: number;
   requestedAt: Date;
@@ -31,9 +31,7 @@ export async function recordToolCall(rec: ToolCallRecord): Promise<void> {
       userUuid = u.id;
     }
 
-    const { value, redacted } = REDACT
-      ? redactArgs(rec.args)
-      : { value: rec.args, redacted: false };
+    const { value, redacted } = REDACT ? redactArgs(rec.args) : { value: rec.args, redacted: false };
 
     await db.insert(toolCalls).values({
       serverId: rec.serverId,
@@ -50,6 +48,6 @@ export async function recordToolCall(rec: ToolCallRecord): Promise<void> {
       resultPreview: rec.resultPreview ?? null,
     });
   } catch (err) {
-    console.error("[telemetry] failed to record tool call:", err);
+    console.error('[telemetry] failed to record tool call:', err);
   }
 }

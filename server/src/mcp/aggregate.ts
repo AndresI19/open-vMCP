@@ -1,23 +1,23 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
   type CallToolResult,
+  ListToolsRequestSchema,
   type Tool,
-} from "@modelcontextprotocol/sdk/types.js";
-import { identityRequired } from "../auth/middleware.js";
-import { allServers, visibleServers, type ServerRow } from "../registry/index.js";
-import { disabledToolNames } from "../registry/tools.js";
-import { connectUpstream, withTimeout } from "./upstream.js";
-import { previewText } from "./proxy.js";
-import { recordToolCall } from "./telemetry.js";
+} from '@modelcontextprotocol/sdk/types.js';
+import { identityRequired } from '../auth/middleware.js';
+import { type ServerRow, allServers, visibleServers } from '../registry/index.js';
+import { disabledToolNames } from '../registry/tools.js';
+import { previewText } from './proxy.js';
+import { recordToolCall } from './telemetry.js';
+import { connectUpstream, withTimeout } from './upstream.js';
 
 /**
  * Separator between a server slug and the upstream tool name in the aggregate
  * namespace: `rs-mcp__search_wiki`. Two upstreams may both expose a `search`, so the
  * flattened catalog has to qualify every name.
  */
-export const NS = "__";
+export const NS = '__';
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
 
@@ -47,10 +47,7 @@ export interface CollectedTools {
  * Visibility routes through visibleServers(), the single access-control seam, so when
  * RBAC lands an anonymous caller's catalog narrows without touching this file.
  */
-export async function collectTools(
-  userId: string | null,
-  bearer?: string,
-): Promise<CollectedTools> {
+export async function collectTools(userId: string | null, bearer?: string): Promise<CollectedTools> {
   const servers = await visibleServers(userId);
 
   const settled = await Promise.allSettled(
@@ -61,11 +58,7 @@ export async function collectTools(
         `${s.slug} connect`,
       );
       try {
-        const listed = await withTimeout(
-          upstream.listTools(),
-          UPSTREAM_TIMEOUT_MS,
-          `${s.slug} tools/list`,
-        );
+        const listed = await withTimeout(upstream.listTools(), UPSTREAM_TIMEOUT_MS, `${s.slug} tools/list`);
         const disabled = await disabledToolNames(s.id);
         return listed.tools
           .filter((t) => !disabled.has(t.name))
@@ -79,7 +72,7 @@ export async function collectTools(
   const tools: AggregateTool[] = [];
   const errors: { slug: string; error: string }[] = [];
   settled.forEach((r, i) => {
-    if (r.status === "fulfilled") tools.push(...r.value);
+    if (r.status === 'fulfilled') tools.push(...r.value);
     else errors.push({ slug: servers[i].slug, error: String(r.reason?.message ?? r.reason) });
   });
 
@@ -130,7 +123,7 @@ async function resolveQualifiedUnfiltered(
  */
 export function buildAggregateServer(ctx: AggregateContext): Server {
   const server = new Server(
-    { name: "vmcp:aggregate", version: "0.1.0" },
+    { name: 'vmcp:aggregate', version: '0.1.0' },
     // listChanged: the catalog is mutable at runtime (dashboard toggles), so clients are
     // told to re-list rather than run forever on their connect-time snapshot.
     { capabilities: { tools: { listChanged: true } } },
@@ -143,7 +136,7 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
     }
     console.log(
       `[aggregate tools/list] → ${tools.length} tools from ${new Set(tools.map((t) => t.serverSlug)).size} servers ` +
-        `(user=${ctx.userId ?? "-"})`,
+        `(user=${ctx.userId ?? '-'})`,
     );
     // serverSlug is gateway bookkeeping, not part of the MCP Tool shape.
     return { tools: tools.map(({ serverSlug: _slug, ...tool }) => tool) };
@@ -160,11 +153,8 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
       return {
         content: [
           {
-            type: "text",
-            text:
-              `Calling "${qualified}" requires a bearer token. The aggregate catalog is ` +
-              `readable anonymously, but tool execution is not. Mint a dev token at ` +
-              `/auth/mock-token?user=<id> and send it as "Authorization: Bearer <token>".`,
+            type: 'text',
+            text: `Calling "${qualified}" requires a bearer token. The aggregate catalog is readable anonymously, but tool execution is not. Mint a dev token at /auth/mock-token?user=<id> and send it as "Authorization: Bearer <token>".`,
           },
         ],
         isError: true,
@@ -185,35 +175,32 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
           sessionId: ctx.sessionId(),
           toolName: hidden.toolName,
           args,
-          status: "blocked",
-          errorMessage: "server disabled by gateway policy",
+          status: 'blocked',
+          errorMessage: 'server disabled by gateway policy',
           latencyMs: 0,
           requestedAt,
           respondedAt: new Date(),
         });
         console.log(
           `[aggregate tools/call] ${hidden.server.slug}/${hidden.toolName} ` +
-            `user=${ctx.userId ?? "-"} status=blocked (server disabled)`,
+            `user=${ctx.userId ?? '-'} status=blocked (server disabled)`,
         );
         return {
           content: [
             {
-              type: "text",
-              text:
-                `Tool "${hidden.toolName}" is unavailable: server "${hidden.server.slug}" is ` +
-                `disabled by the gateway. This is a policy block, not a bad tool name — ` +
-                `re-listing tools will not return it.`,
+              type: 'text',
+              text: `Tool "${hidden.toolName}" is unavailable: server "${hidden.server.slug}" is disabled by the gateway. This is a policy block, not a bad tool name — re-listing tools will not return it.`,
             },
           ],
           isError: true,
         };
       }
 
-      console.log(`[aggregate tools/call] ${qualified} user=${ctx.userId ?? "-"} status=unknown`);
+      console.log(`[aggregate tools/call] ${qualified} user=${ctx.userId ?? '-'} status=unknown`);
       return {
         content: [
           {
-            type: "text",
+            type: 'text',
             text: `Unknown tool "${qualified}". Expected a qualified name like "<server>${NS}<tool>".`,
           },
         ],
@@ -231,22 +218,20 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
         sessionId: ctx.sessionId(),
         toolName,
         args,
-        status: "blocked",
-        errorMessage: "tool disabled by gateway policy",
+        status: 'blocked',
+        errorMessage: 'tool disabled by gateway policy',
         latencyMs: 0,
         requestedAt,
         respondedAt: new Date(),
       });
-      console.log(
-        `[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? "-"} status=blocked`,
-      );
+      console.log(`[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? '-'} status=blocked`);
       return {
-        content: [{ type: "text", text: `Tool "${toolName}" is disabled by the gateway.` }],
+        content: [{ type: 'text', text: `Tool "${toolName}" is disabled by the gateway.` }],
         isError: true,
       };
     }
 
-    let upstream;
+    let upstream: Awaited<ReturnType<typeof connectUpstream>>;
     try {
       upstream = await withTimeout(
         connectUpstream(row, ctx.bearer),
@@ -261,17 +246,17 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
         sessionId: ctx.sessionId(),
         toolName,
         args,
-        status: "error",
+        status: 'error',
         errorMessage: message,
         latencyMs: Math.round(performance.now() - start),
         requestedAt,
         respondedAt: new Date(),
       });
       console.log(
-        `[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? "-"} status=error (${message})`,
+        `[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? '-'} status=error (${message})`,
       );
       return {
-        content: [{ type: "text", text: `Upstream connect failed: ${message}` }],
+        content: [{ type: 'text', text: `Upstream connect failed: ${message}` }],
         isError: true,
       };
     }
@@ -291,7 +276,7 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
         sessionId: ctx.sessionId(),
         toolName,
         args,
-        status: isError ? "error" : "ok",
+        status: isError ? 'error' : 'ok',
         errorMessage: isError ? preview : undefined,
         latencyMs,
         requestedAt,
@@ -300,8 +285,8 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
       });
 
       console.log(
-        `[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? "-"} ` +
-          `status=${isError ? "error" : "ok"} ${latencyMs}ms`,
+        `[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? '-'} ` +
+          `status=${isError ? 'error' : 'ok'} ${latencyMs}ms`,
       );
       return result;
     } catch (err) {
@@ -312,14 +297,14 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
         sessionId: ctx.sessionId(),
         toolName,
         args,
-        status: "error",
+        status: 'error',
         errorMessage: err instanceof Error ? err.message : String(err),
         latencyMs,
         requestedAt,
         respondedAt: new Date(),
       });
       console.log(
-        `[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? "-"} ` +
+        `[aggregate tools/call] ${row.slug}/${toolName} user=${ctx.userId ?? '-'} ` +
           `status=error ${latencyMs}ms (${err instanceof Error ? err.message : String(err)})`,
       );
       throw err;

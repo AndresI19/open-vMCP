@@ -1,4 +1,4 @@
-import "express";
+import 'express';
 
 // Fields the auth middleware attaches to every request.
 declare global {
@@ -14,5 +14,3 @@ declare global {
     }
   }
 }
-
-export {};

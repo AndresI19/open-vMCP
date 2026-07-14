@@ -1,25 +1,25 @@
-import { useState } from "react";
 import {
-  Tile,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
-  Toggle,
   Button,
-  TextInput,
+  InlineNotification,
+  Pagination,
   Select,
   SelectItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tag,
-  Pagination,
-  InlineNotification,
-} from "@carbon/react";
-import { useNavigate } from "react-router-dom";
-import { api, mcpEndpoint, usePoll, type ServerRow } from "../api";
-import { isAdmin } from "../auth";
-import MasterToggle from "../components/MasterToggle";
+  TextInput,
+  Tile,
+  Toggle,
+} from '@carbon/react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { type ServerRow, api, mcpEndpoint, usePoll } from '../api';
+import { isAdmin } from '../auth';
+import MasterToggle from '../components/MasterToggle';
 
 const PAGE_SIZE = 20;
 
@@ -32,7 +32,7 @@ export default function Servers() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
-  const [form, setForm] = useState({ slug: "", name: "", url: "", transport: "sse" });
+  const [form, setForm] = useState({ slug: '', name: '', url: '', transport: 'sse' });
 
   // NOT window.location.origin. The dashboard is served from the FRONT-END host, which deliberately
   // does not serve /mcp — it answers with a 404 naming the api host, so that a misconfigured client
@@ -41,7 +41,7 @@ export default function Servers() {
   // production. mcpEndpoint() comes from /vmcp/config.json: same-origin locally, the api host in
   // production. (It cannot be the in-cluster Service address either — the client reading this runs
   // outside the cluster, where cluster DNS does not resolve.)
-  const origin = mcpEndpoint().replace(/\/mcp$/, "");
+  const origin = mcpEndpoint().replace(/\/mcp$/, '');
   const start = (page - 1) * PAGE_SIZE;
   const pageServers = servers.slice(start, start + PAGE_SIZE);
 
@@ -50,10 +50,10 @@ export default function Servers() {
     const res = await api.createServer(form);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      setError(typeof body.error === "string" ? body.error : "Failed to create server");
+      setError(typeof body.error === 'string' ? body.error : 'Failed to create server');
       return;
     }
-    setForm({ slug: "", name: "", url: "", transport: "sse" });
+    setForm({ slug: '', name: '', url: '', transport: 'sse' });
     refresh();
   }
 
@@ -74,48 +74,46 @@ export default function Servers() {
 
   return (
     <>
-      <h1 style={{ marginBottom: "0.5rem" }}>MCP Servers</h1>
-      <p style={{ color: "var(--cds-text-secondary)", marginBottom: "1rem" }}>
-        The data-driven registry of upstreams the gateway fronts. Hover a row to see its
-        connection URL; click a row to open it. Disabled servers are hidden from all clients.
+      <h1 style={{ marginBottom: '0.5rem' }}>MCP Servers</h1>
+      <p style={{ color: 'var(--cds-text-secondary)', marginBottom: '1rem' }}>
+        The data-driven registry of upstreams the gateway fronts. Hover a row to see its connection URL; click
+        a row to open it. Disabled servers are hidden from all clients.
       </p>
 
       {/* Both endpoints a client can connect to. Hovering a row fills in <server> below. */}
-      <Tile style={{ marginBottom: "1.5rem" }}>
-        <div style={{ marginBottom: "1rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <code style={{ fontSize: "0.95rem" }}>{origin}/mcp</code>
+      <Tile style={{ marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <code style={{ fontSize: '0.95rem' }}>{origin}/mcp</code>
             <Tag type="blue">aggregate</Tag>
           </div>
-          <p style={{ color: "var(--cds-text-secondary)", marginTop: "0.25rem" }}>
-            Every enabled server at once. Tool names arrive namespaced as{" "}
-            <code>&lt;server&gt;__&lt;tool&gt;</code>. Listing the catalog needs no token;
-            calling a tool does.
+          <p style={{ color: 'var(--cds-text-secondary)', marginTop: '0.25rem' }}>
+            Every enabled server at once. Tool names arrive namespaced as{' '}
+            <code>&lt;server&gt;__&lt;tool&gt;</code>. Listing the catalog needs no token; calling a tool
+            does.
           </p>
         </div>
 
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <code style={{ fontSize: "0.95rem" }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <code style={{ fontSize: '0.95rem' }}>
               {origin}/mcp/
               {hovered ? (
-                <span style={{ color: "var(--cds-support-info)", fontWeight: 600 }}>
-                  {hovered}
-                </span>
+                <span style={{ color: 'var(--cds-support-info)', fontWeight: 600 }}>{hovered}</span>
               ) : (
-                <span style={{ color: "var(--cds-text-placeholder)" }}>&lt;server&gt;</span>
+                <span style={{ color: 'var(--cds-text-placeholder)' }}>&lt;server&gt;</span>
               )}
             </code>
             <Tag type="gray">single server</Tag>
           </div>
-          <p style={{ color: "var(--cds-text-secondary)", marginTop: "0.25rem" }}>
+          <p style={{ color: 'var(--cds-text-secondary)', marginTop: '0.25rem' }}>
             One upstream, tool names unchanged. Requires a token.
           </p>
         </div>
       </Tile>
 
-      <div style={{ marginBottom: "2rem" }}>
-        <div style={{ marginBottom: "1rem" }}>
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{ marginBottom: '1rem' }}>
           <MasterToggle
             id="toggle-all-servers"
             noun="servers"
@@ -143,14 +141,14 @@ export default function Servers() {
                 onClick={() => navigate(`/servers/${s.id}`)}
                 onMouseEnter={() => setHovered(s.slug)}
                 onMouseLeave={() => setHovered(null)}
-                style={{ cursor: "pointer" }}
+                style={{ cursor: 'pointer' }}
               >
                 <TableCell>
                   <code>{s.slug}</code>
                 </TableCell>
                 <TableCell>{s.name}</TableCell>
                 <TableCell>
-                  <code style={{ fontSize: "0.75rem" }}>{s.url}</code>
+                  <code style={{ fontSize: '0.75rem' }}>{s.url}</code>
                 </TableCell>
                 <TableCell>{s.transport}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
@@ -192,63 +190,63 @@ export default function Servers() {
           non-admin sees the read-only note instead, so the absence of the form is explained rather
           than mysterious. */}
       {!isAdmin() && (
-        <Tile style={{ marginBottom: "1.5rem" }}>
-          <p style={{ color: "var(--cds-text-secondary)", fontSize: "0.85rem" }}>
-            You are viewing the registry read-only. Registering, editing, or removing a server needs
-            an admin — sign in top-right.
+        <Tile style={{ marginBottom: '1.5rem' }}>
+          <p style={{ color: 'var(--cds-text-secondary)', fontSize: '0.85rem' }}>
+            You are viewing the registry read-only. Registering, editing, or removing a server needs an admin
+            — sign in top-right.
           </p>
         </Tile>
       )}
 
       {isAdmin() && (
-      <Tile>
-        <h4 style={{ marginBottom: "1rem" }}>Register an MCP server</h4>
-        {error && (
-          <InlineNotification
-            kind="error"
-            title="Error"
-            subtitle={error}
-            lowContrast
-            onCloseButtonClick={() => setError(null)}
-            style={{ marginBottom: "1rem" }}
-          />
-        )}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", maxWidth: 640 }}>
-          <TextInput
-            id="slug"
-            labelText="Server"
-            placeholder="my-mcp"
-            value={form.slug}
-            onChange={(e) => setForm({ ...form, slug: e.target.value })}
-          />
-          <TextInput
-            id="name"
-            labelText="Name"
-            placeholder="My MCP"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-          <Select
-            id="transport"
-            labelText="Transport"
-            value={form.transport}
-            onChange={(e) => setForm({ ...form, transport: e.target.value })}
-          >
-            <SelectItem value="sse" text="SSE" />
-            <SelectItem value="streamable-http" text="Streamable HTTP" />
-          </Select>
-          <TextInput
-            id="url"
-            labelText="Upstream URL"
-            placeholder="http://my-mcp.platform.svc.cluster.local:8000/sse"
-            value={form.url}
-            onChange={(e) => setForm({ ...form, url: e.target.value })}
-          />
-        </div>
-        <Button style={{ marginTop: "1rem" }} onClick={addServer}>
-          Add server
-        </Button>
-      </Tile>
+        <Tile>
+          <h4 style={{ marginBottom: '1rem' }}>Register an MCP server</h4>
+          {error && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={error}
+              lowContrast
+              onCloseButtonClick={() => setError(null)}
+              style={{ marginBottom: '1rem' }}
+            />
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', maxWidth: 640 }}>
+            <TextInput
+              id="slug"
+              labelText="Server"
+              placeholder="my-mcp"
+              value={form.slug}
+              onChange={(e) => setForm({ ...form, slug: e.target.value })}
+            />
+            <TextInput
+              id="name"
+              labelText="Name"
+              placeholder="My MCP"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+            <Select
+              id="transport"
+              labelText="Transport"
+              value={form.transport}
+              onChange={(e) => setForm({ ...form, transport: e.target.value })}
+            >
+              <SelectItem value="sse" text="SSE" />
+              <SelectItem value="streamable-http" text="Streamable HTTP" />
+            </Select>
+            <TextInput
+              id="url"
+              labelText="Upstream URL"
+              placeholder="http://my-mcp.platform.svc.cluster.local:8000/sse"
+              value={form.url}
+              onChange={(e) => setForm({ ...form, url: e.target.value })}
+            />
+          </div>
+          <Button style={{ marginTop: '1rem' }} onClick={addServer}>
+            Add server
+          </Button>
+        </Tile>
       )}
     </>
   );

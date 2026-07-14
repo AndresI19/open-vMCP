@@ -1,31 +1,34 @@
-import { useCallback } from "react";
-import { Link, useParams } from "react-router-dom";
 import {
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
-  Toggle,
-  Tag,
   Button,
   InlineLoading,
   InlineNotification,
-} from "@carbon/react";
-import { api, usePoll, useAsync, type ToolInfo } from "../api";
-import MasterToggle from "../components/MasterToggle";
-import { StatusTag, fmtTime, fmtLatency, DASH } from "../format";
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tabs,
+  Tag,
+  Toggle,
+} from '@carbon/react';
+import { useCallback } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { type ToolInfo, api, useAsync, usePoll } from '../api';
+import MasterToggle from '../components/MasterToggle';
+import { DASH, StatusTag, fmtLatency, fmtTime } from '../format';
 
 export default function ServerDetail() {
-  const { id = "" } = useParams();
+  const { id = '' } = useParams();
 
-  const { data: server } = usePoll(useCallback(() => api.server(id), [id]), 10000);
+  const { data: server } = usePoll(
+    useCallback(() => api.server(id), [id]),
+    10000,
+  );
   const {
     data: toolsData,
     loading: toolsLoading,
@@ -48,38 +51,42 @@ export default function ServerDetail() {
 
   async function setAllTools(enabled: boolean) {
     if (serverDisabled) return;
-    await api.setServerToolsEnabled(id, tools.map((t) => t.name), enabled);
+    await api.setServerToolsEnabled(
+      id,
+      tools.map((t) => t.name),
+      enabled,
+    );
     refreshTools();
   }
 
   return (
     <>
-      <p style={{ marginBottom: "0.5rem" }}>
+      <p style={{ marginBottom: '0.5rem' }}>
         <Link to="/servers">← MCP Servers</Link>
       </p>
-      <h1 style={{ marginBottom: "0.25rem" }}>{server?.name ?? "Server"}</h1>
-      <p style={{ color: "var(--cds-text-secondary)", marginBottom: "1.5rem" }}>
+      <h1 style={{ marginBottom: '0.25rem' }}>{server?.name ?? 'Server'}</h1>
+      <p style={{ color: 'var(--cds-text-secondary)', marginBottom: '1.5rem' }}>
         <code>{server?.slug}</code> · {server?.transport} · {server?.url}
       </p>
 
       <Tabs>
         <TabList aria-label="Server detail">
-          <Tab>Tools{tools.length ? ` (${tools.length})` : ""}</Tab>
+          <Tab>Tools{tools.length ? ` (${tools.length})` : ''}</Tab>
           <Tab>Calls</Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                margin: "1rem 0",
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                margin: '1rem 0',
               }}
             >
-              <p style={{ color: "var(--cds-text-secondary)" }}>
-                Disabling a tool hides it from <code>tools/list</code> and blocks{" "}
-                <code>tools/call</code> at the gateway.
+              <p style={{ color: 'var(--cds-text-secondary)' }}>
+                Disabling a tool hides it from <code>tools/list</code> and blocks <code>tools/call</code> at
+                the gateway.
               </p>
               <Button kind="tertiary" size="sm" onClick={refreshTools} disabled={toolsLoading}>
                 Refresh
@@ -92,7 +99,7 @@ export default function ServerDetail() {
                 subtitle="This server is disabled — its tools are unavailable to clients and can't be changed."
                 lowContrast
                 hideCloseButton
-                style={{ marginBottom: "1rem" }}
+                style={{ marginBottom: '1rem' }}
               />
             )}
             {toolsError && (
@@ -101,17 +108,15 @@ export default function ServerDetail() {
                 title="Could not load tools"
                 subtitle={toolsError}
                 lowContrast
-                style={{ marginBottom: "1rem" }}
+                style={{ marginBottom: '1rem' }}
               />
             )}
-            {toolsLoading && (
-              <InlineLoading description="Loading tools from the upstream server…" />
-            )}
+            {toolsLoading && <InlineLoading description="Loading tools from the upstream server…" />}
             {!toolsLoading && !toolsError && tools.length === 0 && (
-              <p style={{ color: "var(--cds-text-secondary)" }}>No tools returned.</p>
+              <p style={{ color: 'var(--cds-text-secondary)' }}>No tools returned.</p>
             )}
             {tools.length > 0 && (
-              <div style={{ marginBottom: "1rem" }}>
+              <div style={{ marginBottom: '1rem' }}>
                 <MasterToggle
                   id="toggle-all-server-tools"
                   noun="tools"
@@ -137,7 +142,7 @@ export default function ServerDetail() {
                       <code>{t.name}</code>
                     </TableCell>
                     <TableCell>
-                      <div style={{ maxWidth: 560, whiteSpace: "normal" }}>{t.description}</div>
+                      <div style={{ maxWidth: 560, whiteSpace: 'normal' }}>{t.description}</div>
                     </TableCell>
                     <TableCell>
                       <Toggle
@@ -178,7 +183,7 @@ export default function ServerDetail() {
                     </TableCell>
                     <TableCell>{c.toolName}</TableCell>
                     <TableCell>
-                      <code style={{ fontSize: "0.75rem" }}>{JSON.stringify(c.arguments)}</code>
+                      <code style={{ fontSize: '0.75rem' }}>{JSON.stringify(c.arguments)}</code>
                     </TableCell>
                     <TableCell>
                       <StatusTag status={c.status} />

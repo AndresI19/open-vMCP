@@ -1,15 +1,15 @@
 import {
+  Pagination,
   Table,
-  TableHead,
-  TableRow,
-  TableHeader,
   TableBody,
   TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tag,
-  Pagination,
-} from "@carbon/react";
-import { api, usePoll, usePaged } from "../api";
-import { StatusTag, fmtTime, fmtLatency, DASH } from "../format";
+} from '@carbon/react';
+import { api, usePaged, usePoll } from '../api';
+import { DASH, StatusTag, fmtLatency, fmtTime } from '../format';
 
 export default function RecentCalls() {
   const { data } = usePoll(api.calls, 4000);
@@ -18,7 +18,7 @@ export default function RecentCalls() {
 
   return (
     <>
-      <h1 style={{ marginBottom: "1.5rem" }}>Recent Calls</h1>
+      <h1 style={{ marginBottom: '1.5rem' }}>Recent Calls</h1>
       <Table size="lg">
         <TableHead>
           <TableRow>
@@ -41,9 +41,7 @@ export default function RecentCalls() {
               <TableCell>{c.serverSlug ?? DASH}</TableCell>
               <TableCell>{c.toolName}</TableCell>
               <TableCell>
-                <code style={{ fontSize: "0.75rem" }}>
-                  {JSON.stringify(c.arguments)}
-                </code>
+                <code style={{ fontSize: '0.75rem' }}>{JSON.stringify(c.arguments)}</code>
                 {c.argsRedacted && (
                   <Tag type="warm-gray" size="sm" style={{ marginLeft: 8 }}>
                     redacted
