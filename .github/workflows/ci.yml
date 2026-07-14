@@ -34,3 +34,20 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1" # blocking: image is hardened to 0 HIGH/CRITICAL
           ignore-unfixed: true
+
+  dep-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Source-level scan: the built images are minimal (bundled or prod-only), so a Trivy fs scan of
+      # the lockfiles is what catches a vulnerable DEPENDENCY before it is shipped — the coverage an
+      # image scan of a bundled app cannot give.
+      - name: Trivy dependency scan (lockfiles)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
