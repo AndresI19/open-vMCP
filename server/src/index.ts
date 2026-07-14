@@ -2,6 +2,7 @@ import './env.js';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { apiRouter } from './api/index.js';
 import { identityMiddleware, requireAdminForWrites } from './auth/middleware.js';
 import { loadAuthConfig } from './config/load.js';
@@ -12,7 +13,25 @@ import { repoRoot } from './paths.js';
 loadAuthConfig();
 
 const app = express();
+// Behind nginx (and Cloudflare in the public deployment), so the real client IP arrives in
+// X-Forwarded-For rather than on the socket — without this the limiter below would see one IP for
+// the whole internet.
+app.set('trust proxy', true);
 app.use(express.json({ limit: '4mb' }));
+
+// A coarse global cap as defence-in-depth against scraping and brute force. The ceiling is generous
+// because this process also serves the dashboard's static bundle, and one page load fans out to many
+// requests — real abuse trips it long before a human browsing does. Per-process (single replica), so
+// it resets on restart, which is acceptable for a rate this coarse.
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  // We deliberately trust our own proxy chain; silence the permissive-trust-proxy validation.
+  validate: { trustProxy: false },
+});
+app.use(limiter);
 
 /**
  * CORS for the data API. Needed only once the dashboard and the API are on different hostnames
@@ -122,7 +141,7 @@ app.get('/', (_req, res) => res.redirect('/vmcp/'));
  * `_next` would silently turn this back into an ordinary middleware that never runs.
  */
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(`[error] ${req.method} ${req.originalUrl}:`, err);
+  console.error('[error] %s %s:', req.method, req.originalUrl, err);
   if (res.headersSent) return;
   res.status(500).json({ error: 'internal error' });
 });
