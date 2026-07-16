@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
-import { DASH, StatusTag, fmtLatency } from './format';
+import { DASH, StatusTag, fmtLatency } from '../src/format';
 
 /**
  * The status tag had a real bug: Recent Calls decided a call's colour with
