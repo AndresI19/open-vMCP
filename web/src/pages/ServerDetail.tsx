@@ -13,7 +13,6 @@ import {
   TableHeader,
   TableRow,
   Tabs,
-  Tag,
   Toggle,
 } from '@carbon/react';
 import { useCallback } from 'react';
