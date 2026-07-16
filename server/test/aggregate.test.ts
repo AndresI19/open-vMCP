@@ -25,6 +25,7 @@ vi.mock('../src/mcp/upstream.js', () => ({
   connectUpstream: vi.fn(),
   withTimeout: <T>(p: Promise<T>) => p,
   HOSTED_TRANSPORTS: ['sse', 'streamable-http'],
+  UPSTREAM_TIMEOUT_MS: 15_000,
 }));
 vi.mock('../src/mcp/telemetry.js', () => ({
   recordToolCall: vi.fn(async () => {}),

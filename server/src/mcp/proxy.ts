@@ -17,6 +17,9 @@ export interface ProxyContext {
   sessionId: () => string | null;
 }
 
+/** Longest result-preview stored for the dashboard; longer text is truncated with an ellipsis. */
+const PREVIEW_MAX_CHARS = 2000;
+
 /** Pull a short text preview out of a CallToolResult for the dashboard. */
 export function previewText(result: CallToolResult): string | undefined {
   const content = result.content;
@@ -26,7 +29,7 @@ export function previewText(result: CallToolResult): string | undefined {
     .map((c) => (c as { text: string }).text)
     .join('\n');
   if (!text) return undefined;
-  return text.length > 2000 ? `${text.slice(0, 2000)}…` : text;
+  return text.length > PREVIEW_MAX_CHARS ? `${text.slice(0, PREVIEW_MAX_CHARS)}…` : text;
 }
 
 /**

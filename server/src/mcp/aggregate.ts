@@ -11,13 +11,11 @@ import { disabledToolNames } from '../registry/tools.js';
 import { NS, matchQualified, qualify } from './naming.js';
 import { previewText } from './proxy.js';
 import { recordToolCall } from './telemetry.js';
-import { connectUpstream, withTimeout } from './upstream.js';
+import { UPSTREAM_TIMEOUT_MS, connectUpstream, withTimeout } from './upstream.js';
 
 // The `${slug}__${name}` namespacing contract lives in ./naming.js; re-exported so callers
 // (and the characterization tests) still read NS from the aggregate module.
 export { NS };
-
-const UPSTREAM_TIMEOUT_MS = 15_000;
 
 /**
  * Collapse newlines and tabs before a user-controlled value (a qualified tool name, a user id, an
@@ -143,7 +141,7 @@ async function handleToolCall(
       content: [
         {
           type: 'text',
-          text: `Calling "${qualified}" requires a bearer token. The aggregate catalog is readable anonymously, but tool execution is not. Mint a dev token at /auth/mock-token?user=<id> and send it as "Authorization: Bearer <token>".`,
+          text: `Calling "${qualified}" requires a bearer token. The aggregate catalog is readable anonymously, but tool execution is not. Send a signed identity as "Authorization: Bearer <token>".`,
         },
       ],
       isError: true,
