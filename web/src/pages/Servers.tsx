@@ -17,20 +17,18 @@ import {
 } from '@carbon/react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { type ServerRow, api, mcpEndpoint, usePoll } from '../api';
+import { type ServerRow, api, mcpEndpoint, usePaged, usePoll } from '../api';
 import { isAdmin } from '../auth';
 import MasterToggle from '../components/MasterToggle';
-
-const PAGE_SIZE = 20;
 
 export default function Servers() {
   const navigate = useNavigate();
   const { data, refresh } = usePoll(api.servers, 8000);
   const servers = data ?? [];
+  const { page, setPage, pageItems: pageServers, pageSize } = usePaged(servers);
 
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
 
   const [form, setForm] = useState({ slug: '', name: '', url: '', transport: 'sse' });
 
@@ -42,8 +40,6 @@ export default function Servers() {
   // production. (It cannot be the in-cluster Service address either — the client reading this runs
   // outside the cluster, where cluster DNS does not resolve.)
   const origin = mcpEndpoint().replace(/\/mcp$/, '');
-  const start = (page - 1) * PAGE_SIZE;
-  const pageServers = servers.slice(start, start + PAGE_SIZE);
 
   async function addServer() {
     setError(null);
@@ -178,8 +174,8 @@ export default function Servers() {
         </Table>
         <Pagination
           totalItems={servers.length}
-          pageSize={PAGE_SIZE}
-          pageSizes={[PAGE_SIZE]}
+          pageSize={pageSize}
+          pageSizes={[pageSize]}
           page={page}
           onChange={({ page: p }) => setPage(p)}
         />

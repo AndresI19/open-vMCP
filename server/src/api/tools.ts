@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/client.js';
 import { mcpServers } from '../db/schema.js';
-import { connectUpstream, withTimeout } from '../mcp/upstream.js';
+import { UPSTREAM_TIMEOUT_MS, connectUpstream, withTimeout } from '../mcp/upstream.js';
 import { toolSettingsMap } from '../registry/tools.js';
 
 export const toolsRouter = Router();
@@ -17,9 +17,9 @@ toolsRouter.get('/', async (_req, res) => {
 
   const results = await Promise.allSettled(
     servers.map(async (s) => {
-      const upstream = await withTimeout(connectUpstream(s), 15000, `${s.slug} connect`);
+      const upstream = await withTimeout(connectUpstream(s), UPSTREAM_TIMEOUT_MS, `${s.slug} connect`);
       try {
-        const listed = await withTimeout(upstream.listTools(), 15000, `${s.slug} tools/list`);
+        const listed = await withTimeout(upstream.listTools(), UPSTREAM_TIMEOUT_MS, `${s.slug} tools/list`);
         const settings = await toolSettingsMap(s.id);
         return listed.tools.map((t) => ({
           serverId: s.id,
