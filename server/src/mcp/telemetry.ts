@@ -15,7 +15,8 @@ export interface ToolCallRecord {
   errorMessage?: string;
   latencyMs: number;
   requestedAt: Date;
-  respondedAt: Date;
+  /** When the call was recorded. Defaults to now — the recorder owns this stamp. */
+  respondedAt?: Date;
   resultPreview?: string;
 }
 
@@ -44,7 +45,7 @@ export async function recordToolCall(rec: ToolCallRecord): Promise<void> {
       errorMessage: rec.errorMessage ?? null,
       latencyMs: rec.latencyMs,
       requestedAt: rec.requestedAt,
-      respondedAt: rec.respondedAt,
+      respondedAt: rec.respondedAt ?? new Date(),
       resultPreview: rec.resultPreview ?? null,
     });
   } catch (err) {
