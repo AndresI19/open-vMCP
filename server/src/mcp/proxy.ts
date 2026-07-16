@@ -75,7 +75,6 @@ export function buildProxyServer(ctx: ProxyContext): Server {
         errorMessage: 'tool disabled by gateway policy',
         latencyMs: 0,
         requestedAt,
-        respondedAt: new Date(),
       });
       console.log(
         `[tools/call] ${ctx.server.slug}/${toolName} user=${ctx.externalUserId ?? '-'} status=blocked`,
@@ -105,7 +104,6 @@ export function buildProxyServer(ctx: ProxyContext): Server {
         errorMessage: isError ? preview : undefined,
         latencyMs,
         requestedAt,
-        respondedAt: new Date(),
         resultPreview: preview,
       });
 
@@ -126,7 +124,6 @@ export function buildProxyServer(ctx: ProxyContext): Server {
         errorMessage: err instanceof Error ? err.message : String(err),
         latencyMs,
         requestedAt,
-        respondedAt: new Date(),
       });
       console.log(
         `[tools/call] ${ctx.server.slug}/${toolName} user=${ctx.externalUserId ?? '-'} ` +

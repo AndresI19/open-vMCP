@@ -166,7 +166,6 @@ async function handleToolCall(
         errorMessage: 'server disabled by gateway policy',
         latencyMs: 0,
         requestedAt,
-        respondedAt: new Date(),
       });
       console.log(
         `[aggregate tools/call] ${s1(hidden.server.slug)}/${s1(hidden.toolName)} ` +
@@ -209,7 +208,6 @@ async function handleToolCall(
       errorMessage: 'tool disabled by gateway policy',
       latencyMs: 0,
       requestedAt,
-      respondedAt: new Date(),
     });
     console.log(
       `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=blocked`,
@@ -239,7 +237,6 @@ async function handleToolCall(
       errorMessage: message,
       latencyMs: Math.round(performance.now() - start),
       requestedAt,
-      respondedAt: new Date(),
     });
     console.log(
       `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=error (${s1(message)})`,
@@ -269,7 +266,6 @@ async function handleToolCall(
       errorMessage: isError ? preview : undefined,
       latencyMs,
       requestedAt,
-      respondedAt: new Date(),
       resultPreview: preview,
     });
 
@@ -290,7 +286,6 @@ async function handleToolCall(
       errorMessage: err instanceof Error ? err.message : String(err),
       latencyMs,
       requestedAt,
-      respondedAt: new Date(),
     });
     console.log(
       `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
