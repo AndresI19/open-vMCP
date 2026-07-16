@@ -1,6 +1,6 @@
 {
   "name": "vmcp-gateway",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Virtual MCP gateway: proxies MCP servers to Claude with tool-call telemetry, mocked config-driven identity, and a Carbon dashboard.",
   "workspaces": [
