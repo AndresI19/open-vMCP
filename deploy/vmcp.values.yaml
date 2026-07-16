@@ -1,0 +1,65 @@
+# Deploy values for vmcp — the Kubernetes Deployment/Service spec for this service. It is consumed at
+# deploy time by platform-orchestration's generic `service` chart:
+#   helm upgrade vmcp <orchestration>/charts/service -n platform -f deploy/vmcp.values.yaml \
+#     --set image.repo=registry:5000/vmcp --set image.tag=<version> --set version=<version>
+# The shared boilerplate (securityContext, /tmp mount, labels, probe rendering) lives in the chart's
+# platform.app helper; only what varies for this service is here. Image repo/tag + version are set per
+# deploy by CI. Keep the `name` field == the Service DNS name the router and sibling services expect.
+name: vmcp
+image:
+  repo: platform-vmcp
+  tag: latest
+version: 0.0.0
+port: 8001
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+probe:
+  path: /health
+  initialDelaySeconds: 5
+env:
+  - name: PORT
+    value: '8001'
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: vmcp-db
+        key: DATABASE_URL
+  - name: SEED_URL_RS_MCP
+    value: http://rs-mcp-server:8000/sse
+  - name: HOME_URL
+    valueFrom:
+      configMapKeyRef:
+        name: platform-config
+        key: HOME_URL
+  - name: VMCP_API_BASE
+    valueFrom:
+      configMapKeyRef:
+        name: platform-config
+        key: VMCP_API_BASE
+  - name: CORS_ORIGINS
+    valueFrom:
+      configMapKeyRef:
+        name: platform-config
+        key: CORS_ORIGINS
+  - name: MCP_PUBLIC_URL
+    valueFrom:
+      configMapKeyRef:
+        name: platform-config
+        key: MCP_PUBLIC_URL
+initContainers:
+  - name: wait-for-db
+    image: postgres:16
+    command:
+      - sh
+      - '-c'
+      - until pg_isready -h vmcp-db -U vmcp -d vmcp; do echo waiting for db; sleep 2; done
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
