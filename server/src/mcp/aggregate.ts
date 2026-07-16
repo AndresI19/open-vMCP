@@ -8,16 +8,14 @@ import {
 import { identityRequired } from '../auth/middleware.js';
 import { type ServerRow, allServers, visibleServers } from '../registry/index.js';
 import { disabledToolNames } from '../registry/tools.js';
+import { NS, matchQualified, qualify } from './naming.js';
 import { previewText } from './proxy.js';
 import { recordToolCall } from './telemetry.js';
 import { connectUpstream, withTimeout } from './upstream.js';
 
-/**
- * Separator between a server slug and the upstream tool name in the aggregate
- * namespace: `rs-mcp__search_wiki`. Two upstreams may both expose a `search`, so the
- * flattened catalog has to qualify every name.
- */
-export const NS = '__';
+// The `${slug}__${name}` namespacing contract lives in ./naming.js; re-exported so callers
+// (and the characterization tests) still read NS from the aggregate module.
+export { NS };
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
 
@@ -69,7 +67,7 @@ export async function collectTools(userId: string | null, bearer?: string): Prom
         const disabled = await disabledToolNames(s.id);
         return listed.tools
           .filter((t) => !disabled.has(t.name))
-          .map((t) => ({ ...t, name: `${s.slug}${NS}${t.name}`, serverSlug: s.slug }));
+          .map((t) => ({ ...t, name: qualify(s.slug, t.name), serverSlug: s.slug }));
       } finally {
         await upstream.close().catch(() => {});
       }
@@ -87,21 +85,9 @@ export async function collectTools(userId: string | null, bearer?: string): Prom
 }
 
 /**
- * Map a qualified name back to its upstream. Matches against the known slug list rather
- * than splitting on NS, so an upstream tool whose own name contains "__" still resolves;
- * longest slug wins so one slug cannot shadow another it happens to prefix.
+ * Map a qualified name back to an upstream the given user may see. Delegates the split to
+ * matchQualified (naming.js) so the `__`-in-toolname / longest-slug-wins rules live in one place.
  */
-function matchQualified(
-  servers: ServerRow[],
-  qualified: string,
-): { server: ServerRow; toolName: string } | null {
-  const match = servers
-    .filter((s) => qualified.startsWith(`${s.slug}${NS}`))
-    .sort((a, b) => b.slug.length - a.slug.length)[0];
-  if (!match) return null;
-  return { server: match, toolName: qualified.slice(match.slug.length + NS.length) };
-}
-
 export async function resolveQualified(
   userId: string | null,
   qualified: string,
@@ -120,8 +106,208 @@ async function resolveQualifiedUnfiltered(
 }
 
 /**
+ * tools/list handler body: build the flattened, namespaced catalog for the aggregate endpoint.
+ * Reading the catalog is open (no identity gate) so a client can discover what the gateway fronts.
+ */
+async function handleListTools(ctx: AggregateContext): Promise<{ tools: Tool[] }> {
+  const { tools, errors } = await collectTools(ctx.userId, ctx.bearer);
+  for (const e of errors) {
+    console.warn(`[aggregate tools/list] skipped ${s1(e.slug)}: ${s1(e.error)}`);
+  }
+  console.log(
+    `[aggregate tools/list] → ${tools.length} tools from ${new Set(tools.map((t) => t.serverSlug)).size} servers ` +
+      `(user=${s1(ctx.userId ?? '-')})`,
+  );
+  // serverSlug is gateway bookkeeping, not part of the MCP Tool shape.
+  return { tools: tools.map(({ serverSlug: _slug, ...tool }) => tool) };
+}
+
+/**
+ * tools/call handler body: resolve a qualified name, apply gateway policy (identity, disabled
+ * server/tool), then forward the UNqualified call to the upstream and record telemetry.
+ *
+ * Invoking a tool is gated even though listing is not — otherwise the gateway would be an
+ * unauthenticated relay to every upstream it knows about (config/auth.json `onMissing`).
+ */
+async function handleToolCall(
+  ctx: AggregateContext,
+  qualified: string,
+  args: Record<string, unknown>,
+): Promise<CallToolResult> {
+  const requestedAt = new Date();
+  const start = performance.now();
+
+  if (!ctx.userId && identityRequired()) {
+    console.log(`[aggregate tools/call] ${s1(qualified)} user=- status=unauthorized`);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Calling "${qualified}" requires a bearer token. The aggregate catalog is readable anonymously, but tool execution is not. Mint a dev token at /auth/mock-token?user=<id> and send it as "Authorization: Bearer <token>".`,
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  const resolved = await resolveQualified(ctx.userId, qualified);
+  if (!resolved) {
+    // A name can miss for two reasons, and the caller must be told them apart.
+    // Disabled: the client is holding a stale catalog — say so, or it retries the name
+    // as if it had typed it wrong. Not permitted (once RBAC lands) or genuinely absent:
+    // both stay "unknown", so the error never confirms a server the caller can't see.
+    const hidden = await resolveQualifiedUnfiltered(qualified);
+    if (hidden && !hidden.server.enabled) {
+      await recordToolCall({
+        serverId: hidden.server.id,
+        externalUserId: ctx.userId,
+        sessionId: ctx.sessionId(),
+        toolName: hidden.toolName,
+        args,
+        status: 'blocked',
+        errorMessage: 'server disabled by gateway policy',
+        latencyMs: 0,
+        requestedAt,
+        respondedAt: new Date(),
+      });
+      console.log(
+        `[aggregate tools/call] ${s1(hidden.server.slug)}/${s1(hidden.toolName)} ` +
+          `user=${s1(ctx.userId ?? '-')} status=blocked (server disabled)`,
+      );
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Tool "${hidden.toolName}" is unavailable: server "${hidden.server.slug}" is disabled by the gateway. This is a policy block, not a bad tool name — re-listing tools will not return it.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    console.log(`[aggregate tools/call] ${s1(qualified)} user=${s1(ctx.userId ?? '-')} status=unknown`);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Unknown tool "${qualified}". Expected a qualified name like "<server>${NS}<tool>".`,
+        },
+      ],
+      isError: true,
+    };
+  }
+  const { server: row, toolName } = resolved;
+
+  // Gateway policy: refuse disabled tools before touching the upstream.
+  const disabled = await disabledToolNames(row.id);
+  if (disabled.has(toolName)) {
+    await recordToolCall({
+      serverId: row.id,
+      externalUserId: ctx.userId,
+      sessionId: ctx.sessionId(),
+      toolName,
+      args,
+      status: 'blocked',
+      errorMessage: 'tool disabled by gateway policy',
+      latencyMs: 0,
+      requestedAt,
+      respondedAt: new Date(),
+    });
+    console.log(
+      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=blocked`,
+    );
+    return {
+      content: [{ type: 'text', text: `Tool "${toolName}" is disabled by the gateway.` }],
+      isError: true,
+    };
+  }
+
+  let upstream: Awaited<ReturnType<typeof connectUpstream>>;
+  try {
+    upstream = await withTimeout(
+      connectUpstream(row, ctx.bearer),
+      UPSTREAM_TIMEOUT_MS,
+      `${row.slug} connect`,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await recordToolCall({
+      serverId: row.id,
+      externalUserId: ctx.userId,
+      sessionId: ctx.sessionId(),
+      toolName,
+      args,
+      status: 'error',
+      errorMessage: message,
+      latencyMs: Math.round(performance.now() - start),
+      requestedAt,
+      respondedAt: new Date(),
+    });
+    console.log(
+      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=error (${s1(message)})`,
+    );
+    return {
+      content: [{ type: 'text', text: `Upstream connect failed: ${message}` }],
+      isError: true,
+    };
+  }
+
+  try {
+    const result = (await upstream.callTool({
+      name: toolName,
+      arguments: args,
+    })) as CallToolResult;
+    const latencyMs = Math.round(performance.now() - start);
+    const isError = result.isError === true;
+    const preview = previewText(result);
+
+    await recordToolCall({
+      serverId: row.id,
+      externalUserId: ctx.userId,
+      sessionId: ctx.sessionId(),
+      toolName,
+      args,
+      status: isError ? 'error' : 'ok',
+      errorMessage: isError ? preview : undefined,
+      latencyMs,
+      requestedAt,
+      respondedAt: new Date(),
+      resultPreview: preview,
+    });
+
+    console.log(
+      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
+        `status=${isError ? 'error' : 'ok'} ${latencyMs}ms`,
+    );
+    return result;
+  } catch (err) {
+    const latencyMs = Math.round(performance.now() - start);
+    await recordToolCall({
+      serverId: row.id,
+      externalUserId: ctx.userId,
+      sessionId: ctx.sessionId(),
+      toolName,
+      args,
+      status: 'error',
+      errorMessage: err instanceof Error ? err.message : String(err),
+      latencyMs,
+      requestedAt,
+      respondedAt: new Date(),
+    });
+    console.log(
+      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
+        `status=error ${latencyMs}ms (${s1(err instanceof Error ? err.message : String(err))})`,
+    );
+    throw err;
+  } finally {
+    await upstream.close().catch(() => {});
+  }
+}
+
+/**
  * Build the downstream MCP Server for the aggregate endpoint (`/mcp`, no slug), which
- * fronts every visible upstream at once.
+ * fronts every visible upstream at once. This is thin wiring: the tools/list and tools/call
+ * bodies live in handleListTools / handleToolCall above.
  *
  * Reading the catalog is open; invoking a tool is not. tools/list answers anonymously so
  * a client can discover what the gateway fronts, while tools/call still honours
@@ -136,191 +322,10 @@ export function buildAggregateServer(ctx: AggregateContext): Server {
     { capabilities: { tools: { listChanged: true } } },
   );
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
-    const { tools, errors } = await collectTools(ctx.userId, ctx.bearer);
-    for (const e of errors) {
-      console.warn(`[aggregate tools/list] skipped ${s1(e.slug)}: ${s1(e.error)}`);
-    }
-    console.log(
-      `[aggregate tools/list] → ${tools.length} tools from ${new Set(tools.map((t) => t.serverSlug)).size} servers ` +
-        `(user=${s1(ctx.userId ?? '-')})`,
-    );
-    // serverSlug is gateway bookkeeping, not part of the MCP Tool shape.
-    return { tools: tools.map(({ serverSlug: _slug, ...tool }) => tool) };
-  });
-
-  server.setRequestHandler(CallToolRequestSchema, async (req) => {
-    const qualified = req.params.name;
-    const args = req.params.arguments ?? {};
-    const requestedAt = new Date();
-    const start = performance.now();
-
-    if (!ctx.userId && identityRequired()) {
-      console.log(`[aggregate tools/call] ${s1(qualified)} user=- status=unauthorized`);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Calling "${qualified}" requires a bearer token. The aggregate catalog is readable anonymously, but tool execution is not. Mint a dev token at /auth/mock-token?user=<id> and send it as "Authorization: Bearer <token>".`,
-          },
-        ],
-        isError: true,
-      };
-    }
-
-    const resolved = await resolveQualified(ctx.userId, qualified);
-    if (!resolved) {
-      // A name can miss for two reasons, and the caller must be told them apart.
-      // Disabled: the client is holding a stale catalog — say so, or it retries the name
-      // as if it had typed it wrong. Not permitted (once RBAC lands) or genuinely absent:
-      // both stay "unknown", so the error never confirms a server the caller can't see.
-      const hidden = await resolveQualifiedUnfiltered(qualified);
-      if (hidden && !hidden.server.enabled) {
-        await recordToolCall({
-          serverId: hidden.server.id,
-          externalUserId: ctx.userId,
-          sessionId: ctx.sessionId(),
-          toolName: hidden.toolName,
-          args,
-          status: 'blocked',
-          errorMessage: 'server disabled by gateway policy',
-          latencyMs: 0,
-          requestedAt,
-          respondedAt: new Date(),
-        });
-        console.log(
-          `[aggregate tools/call] ${s1(hidden.server.slug)}/${s1(hidden.toolName)} ` +
-            `user=${s1(ctx.userId ?? '-')} status=blocked (server disabled)`,
-        );
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool "${hidden.toolName}" is unavailable: server "${hidden.server.slug}" is disabled by the gateway. This is a policy block, not a bad tool name — re-listing tools will not return it.`,
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      console.log(`[aggregate tools/call] ${s1(qualified)} user=${s1(ctx.userId ?? '-')} status=unknown`);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Unknown tool "${qualified}". Expected a qualified name like "<server>${NS}<tool>".`,
-          },
-        ],
-        isError: true,
-      };
-    }
-    const { server: row, toolName } = resolved;
-
-    // Gateway policy: refuse disabled tools before touching the upstream.
-    const disabled = await disabledToolNames(row.id);
-    if (disabled.has(toolName)) {
-      await recordToolCall({
-        serverId: row.id,
-        externalUserId: ctx.userId,
-        sessionId: ctx.sessionId(),
-        toolName,
-        args,
-        status: 'blocked',
-        errorMessage: 'tool disabled by gateway policy',
-        latencyMs: 0,
-        requestedAt,
-        respondedAt: new Date(),
-      });
-      console.log(
-        `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=blocked`,
-      );
-      return {
-        content: [{ type: 'text', text: `Tool "${toolName}" is disabled by the gateway.` }],
-        isError: true,
-      };
-    }
-
-    let upstream: Awaited<ReturnType<typeof connectUpstream>>;
-    try {
-      upstream = await withTimeout(
-        connectUpstream(row, ctx.bearer),
-        UPSTREAM_TIMEOUT_MS,
-        `${row.slug} connect`,
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await recordToolCall({
-        serverId: row.id,
-        externalUserId: ctx.userId,
-        sessionId: ctx.sessionId(),
-        toolName,
-        args,
-        status: 'error',
-        errorMessage: message,
-        latencyMs: Math.round(performance.now() - start),
-        requestedAt,
-        respondedAt: new Date(),
-      });
-      console.log(
-        `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=error (${s1(message)})`,
-      );
-      return {
-        content: [{ type: 'text', text: `Upstream connect failed: ${message}` }],
-        isError: true,
-      };
-    }
-
-    try {
-      const result = (await upstream.callTool({
-        name: toolName,
-        arguments: args,
-      })) as CallToolResult;
-      const latencyMs = Math.round(performance.now() - start);
-      const isError = result.isError === true;
-      const preview = previewText(result);
-
-      await recordToolCall({
-        serverId: row.id,
-        externalUserId: ctx.userId,
-        sessionId: ctx.sessionId(),
-        toolName,
-        args,
-        status: isError ? 'error' : 'ok',
-        errorMessage: isError ? preview : undefined,
-        latencyMs,
-        requestedAt,
-        respondedAt: new Date(),
-        resultPreview: preview,
-      });
-
-      console.log(
-        `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
-          `status=${isError ? 'error' : 'ok'} ${latencyMs}ms`,
-      );
-      return result;
-    } catch (err) {
-      const latencyMs = Math.round(performance.now() - start);
-      await recordToolCall({
-        serverId: row.id,
-        externalUserId: ctx.userId,
-        sessionId: ctx.sessionId(),
-        toolName,
-        args,
-        status: 'error',
-        errorMessage: err instanceof Error ? err.message : String(err),
-        latencyMs,
-        requestedAt,
-        respondedAt: new Date(),
-      });
-      console.log(
-        `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
-          `status=error ${latencyMs}ms (${s1(err instanceof Error ? err.message : String(err))})`,
-      );
-      throw err;
-    } finally {
-      await upstream.close().catch(() => {});
-    }
-  });
+  server.setRequestHandler(ListToolsRequestSchema, () => handleListTools(ctx));
+  server.setRequestHandler(CallToolRequestSchema, (req) =>
+    handleToolCall(ctx, req.params.name, req.params.arguments ?? {}),
+  );
 
   return server;
 }

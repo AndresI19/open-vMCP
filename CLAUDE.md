@@ -80,10 +80,11 @@ seed → serve). `SEED_URL_<SLUG>` env vars override a seed URL per slug — slu
 `SEED_URL_RS_MCP`. That is how the cluster points it at `http://rs-mcp-server:8000/sse`.
 
 **The RBAC seam is `visibleServers(userId)`** in `server/src/registry/index.ts`. It currently ignores
-its argument and returns all enabled servers. The `user_server_access` table exists for the join and
-is never read. If you implement RBAC, do it there — every routing and listing path already goes
-through it. Note the documented constraint: "not permitted" must be **indistinguishable** from "does
-not exist", or the API becomes an enumeration oracle.
+its argument and returns all enabled servers (the v1 open policy). The old `user_server_access` join
+table — present since day one but never read — has been removed; when you implement RBAC, add the
+table back and consult it here, since every routing and listing path already goes through this seam.
+Note the documented constraint: "not permitted" must be **indistinguishable** from "does not exist",
+or the API becomes an enumeration oracle.
 
 ## Environment
 

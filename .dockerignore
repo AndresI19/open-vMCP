@@ -7,3 +7,9 @@ web/dist
 *.log
 .git
 coverage
+
+# tests never ship — build tsconfigs include only src/
+**/*.test.ts
+**/*.test.tsx
+server/test
+web/test

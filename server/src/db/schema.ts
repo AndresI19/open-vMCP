@@ -37,23 +37,6 @@ export const users = pgTable('users', {
   lastSeen: timestamp('last_seen', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/**
- * RBAC join: which users may see which servers. Present from day one but unused by
- * the v1 open policy — visibleServers(userId) starts consulting it when RBAC lands.
- */
-export const userServerAccess = pgTable(
-  'user_server_access',
-  {
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    serverId: uuid('server_id')
-      .notNull()
-      .references(() => mcpServers.id, { onDelete: 'cascade' }),
-  },
-  (t) => [primaryKey({ columns: [t.userId, t.serverId] })],
-);
-
 /** One row per proxied tools/call — the telemetry the dashboard renders. */
 export const toolCalls = pgTable(
   'tool_calls',

@@ -8,9 +8,9 @@ export type ServerRow = typeof mcpServers.$inferSelect;
  * THE single access-control seam.
  *
  * v1 open policy: every user sees all ENABLED servers. When RBAC lands, this is the
- * only function that changes — it joins user_server_access filtered by userId.
- * Both tools/list and the /mcp/:slug guard route through here, so authorization has
- * exactly one home.
+ * only function that changes — it filters by userId against a per-user access grant
+ * (the join table is deferred until then). Both tools/list and the /mcp/:slug guard
+ * route through here, so authorization has exactly one home.
  *
  * This currently conflates two reasons a server is absent: globally disabled, and (once
  * RBAC lands) not permitted for this user. Callers that turn absence into an error
