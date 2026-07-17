@@ -1,17 +1,13 @@
 import "../src/env.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { mockToken } from "./mock-token.js";
 
 const BASE = process.env.VMCP_URL ?? "http://localhost:8001/mcp/rs-mcp";
-const MINT = "http://localhost:8001/auth/mock-token";
-
-async function tokenFor(user: string): Promise<string> {
-  const r = await fetch(`${MINT}?user=${encodeURIComponent(user)}`);
-  return (await r.json()).token as string;
-}
 
 async function session(user: string) {
-  const token = await tokenFor(user);
+  // Local dev bearer (the /auth/mock-token minter is gone); works only with auth.verify:false.
+  const token = mockToken(user);
   const client = new Client({ name: `populate-${user}`, version: "0.0.0" }, { capabilities: {} });
   const transport = new StreamableHTTPClientTransport(new URL(BASE), {
     requestInit: { headers: { Authorization: `Bearer ${token}` } },

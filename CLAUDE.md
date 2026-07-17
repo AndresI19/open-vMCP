@@ -27,9 +27,11 @@ npm run db:up          # postgres:16 via docker     — HOST PORT 5433, not 5432
 npm run db:migrate     # drizzle
 npm run db:seed        # upserts config/servers.seed.json
 npm run e2e            # smoke script; needs a live gateway + upstream
+npm run lint           # biome check server/src web/src
 ```
 
-**No linter, no separate typecheck script.** Typechecking only happens via `npm run build`.
+**Biome is the linter/formatter** (`npm run lint`, config in `biome.json`). **No separate typecheck
+script** — typechecking only happens via `npm run build` (`tsc`).
 
 ## Architecture you need to hold in your head
 

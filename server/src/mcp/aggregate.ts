@@ -8,6 +8,7 @@ import {
 import { identityRequired } from '../auth/middleware.js';
 import { type ServerRow, allServers, visibleServers } from '../registry/index.js';
 import { disabledToolNames } from '../registry/tools.js';
+import { fanOutServers } from './fanout.js';
 import { NS, matchQualified, qualify } from './naming.js';
 import { previewText } from './proxy.js';
 import { recordToolCall } from './telemetry.js';
@@ -49,31 +50,17 @@ export interface CollectedTools {
 export async function collectTools(userId: string | null, bearer?: string): Promise<CollectedTools> {
   const servers = await visibleServers(userId);
 
-  const settled = await Promise.allSettled(
-    servers.map(async (s) => {
-      const upstream = await withTimeout(
-        connectUpstream(s, bearer),
-        UPSTREAM_TIMEOUT_MS,
-        `${s.slug} connect`,
-      );
-      try {
-        const listed = await withTimeout(upstream.listTools(), UPSTREAM_TIMEOUT_MS, `${s.slug} tools/list`);
-        const disabled = await disabledToolNames(s.id);
-        return listed.tools
-          .filter((t) => !disabled.has(t.name))
-          .map((t) => ({ ...t, name: qualify(s.slug, t.name), serverSlug: s.slug }));
-      } finally {
-        await upstream.close().catch(() => {});
-      }
-    }),
+  const { items: tools, errors } = await fanOutServers<AggregateTool>(
+    servers,
+    async (s, upstream) => {
+      const listed = await withTimeout(upstream.listTools(), UPSTREAM_TIMEOUT_MS, `${s.slug} tools/list`);
+      const disabled = await disabledToolNames(s.id);
+      return listed.tools
+        .filter((t) => !disabled.has(t.name))
+        .map((t) => ({ ...t, name: qualify(s.slug, t.name), serverSlug: s.slug }));
+    },
+    bearer,
   );
-
-  const tools: AggregateTool[] = [];
-  const errors: { slug: string; error: string }[] = [];
-  settled.forEach((r, i) => {
-    if (r.status === 'fulfilled') tools.push(...r.value);
-    else errors.push({ slug: servers[i].slug, error: String(r.reason?.message ?? r.reason) });
-  });
 
   return { tools, errors };
 }
