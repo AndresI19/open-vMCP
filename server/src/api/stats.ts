@@ -7,18 +7,13 @@ export const statsRouter = Router();
 
 /** Headline tiles for the Overview page. */
 statsRouter.get('/overview', async (_req, res) => {
-  const [{ total }] = await db.select({ total: count() }).from(toolCalls);
-  const [{ errors }] = await db
-    .select({ errors: count() })
-    .from(toolCalls)
-    .where(eq(toolCalls.status, 'error'));
-  const [{ uniqueUsers }] = await db
-    .select({ uniqueUsers: sql<number>`count(distinct ${toolCalls.userId})` })
-    .from(toolCalls);
-  const [{ activeServers }] = await db
-    .select({ activeServers: count() })
-    .from(mcpServers)
-    .where(eq(mcpServers.enabled, true));
+  // Four independent aggregates — fan them out in parallel rather than serializing four round-trips.
+  const [[{ total }], [{ errors }], [{ uniqueUsers }], [{ activeServers }]] = await Promise.all([
+    db.select({ total: count() }).from(toolCalls),
+    db.select({ errors: count() }).from(toolCalls).where(eq(toolCalls.status, 'error')),
+    db.select({ uniqueUsers: sql<number>`count(distinct ${toolCalls.userId})` }).from(toolCalls),
+    db.select({ activeServers: count() }).from(mcpServers).where(eq(mcpServers.enabled, true)),
+  ]);
 
   const totalN = Number(total);
   const errorN = Number(errors);

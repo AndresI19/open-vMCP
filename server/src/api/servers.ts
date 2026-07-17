@@ -48,8 +48,6 @@ const baseSchema = z.object({
   forwardAuth: z.boolean().default(false),
 });
 
-const createSchema = baseSchema;
-
 /** List every registered server (enabled or not) — the control-plane table. */
 serversRouter.get('/', async (_req, res) => {
   const rows = await db.select().from(mcpServers).orderBy(mcpServers.createdAt);
@@ -57,7 +55,7 @@ serversRouter.get('/', async (_req, res) => {
 });
 
 serversRouter.post('/', async (req, res) => {
-  const data = parseBody(createSchema, req, res);
+  const data = parseBody(baseSchema, req, res);
   if (!data) return;
   try {
     const [row] = await db.insert(mcpServers).values(data).returning();

@@ -30,10 +30,7 @@ const PREVIEW_MAX_CHARS = 2000;
 export function previewText(result: CallToolResult): string | undefined {
   const content = result.content;
   if (!Array.isArray(content)) return undefined;
-  const text = content
-    .filter((c) => c.type === 'text')
-    .map((c) => (c as { text: string }).text)
-    .join('\n');
+  const text = content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join('\n');
   if (!text) return undefined;
   return text.length > PREVIEW_MAX_CHARS ? `${text.slice(0, PREVIEW_MAX_CHARS)}…` : text;
 }
