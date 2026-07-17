@@ -1,5 +1,5 @@
 import { eq, sql } from 'drizzle-orm';
-import { Router } from 'express';
+import { type Request, type Response, Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db/client.js';
 import { mcpServers } from '../db/schema.js';
@@ -9,10 +9,30 @@ import { setToolEnabled, setToolsEnabled, toolSettingsMap } from '../registry/to
 
 export const serversRouter = Router();
 
+/**
+ * Validate `req.body` against `schema`. On failure, answer a 400 with the flattened errors and
+ * return null so the caller returns; on success, return the parsed data. Folds the safeParse→400
+ * frame that every write here would otherwise repeat.
+ */
+function parseBody<T>(schema: z.ZodType<T>, req: Request, res: Response): T | null {
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return null;
+  }
+  return parsed.data;
+}
+
 /** Slug for a server id, or null — needed to scope a broadcast to per-slug sessions. */
 async function slugFor(id: string): Promise<string | null> {
   const [row] = await db.select({ slug: mcpServers.slug }).from(mcpServers).where(eq(mcpServers.id, id));
   return row?.slug ?? null;
+}
+
+/** Notify live sessions of a tool-list change scoped to one server's slug, if it still exists. */
+async function broadcastForServer(id: string): Promise<void> {
+  const slug = await slugFor(id);
+  if (slug) await broadcastToolListChanged(slug);
 }
 
 // Hosted upstreams only — stdio/subprocess registration is disabled for now.
@@ -37,17 +57,14 @@ serversRouter.get('/', async (_req, res) => {
 });
 
 serversRouter.post('/', async (req, res) => {
-  const parsed = createSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
-    return;
-  }
+  const data = parseBody(createSchema, req, res);
+  if (!data) return;
   try {
-    const [row] = await db.insert(mcpServers).values(parsed.data).returning();
+    const [row] = await db.insert(mcpServers).values(data).returning();
     await broadcastToolListChanged(row.slug);
     res.status(201).json(row);
   } catch {
-    res.status(409).json({ error: `slug '${parsed.data.slug}' already exists` });
+    res.status(409).json({ error: `slug '${data.slug}' already exists` });
   }
 });
 
@@ -56,14 +73,11 @@ serversRouter.post('/', async (req, res) => {
  * Declared before "/:id" so the bare path is not swallowed by the id parameter.
  */
 serversRouter.patch('/', async (req, res) => {
-  const parsed = z.object({ enabled: z.boolean() }).safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
-    return;
-  }
+  const data = parseBody(z.object({ enabled: z.boolean() }), req, res);
+  if (!data) return;
   const rows = await db
     .update(mcpServers)
-    .set({ enabled: parsed.data.enabled, updatedAt: sql`now()` })
+    .set({ enabled: data.enabled, updatedAt: sql`now()` })
     .returning({ id: mcpServers.id });
   // Every server moved; no slug scopes this.
   await broadcastToolListChanged();
@@ -71,14 +85,11 @@ serversRouter.patch('/', async (req, res) => {
 });
 
 serversRouter.patch('/:id', async (req, res) => {
-  const parsed = baseSchema.partial().safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
-    return;
-  }
+  const data = parseBody(baseSchema.partial(), req, res);
+  if (!data) return;
   const [row] = await db
     .update(mcpServers)
-    .set({ ...parsed.data, updatedAt: sql`now()` })
+    .set({ ...data, updatedAt: sql`now()` })
     .where(eq(mcpServers.id, String(req.params.id)))
     .returning();
   if (!row) {
@@ -87,7 +98,7 @@ serversRouter.patch('/:id', async (req, res) => {
   }
   // A slug rename orphans sessions bound to the old slug, so widen the broadcast to everyone rather
   // than notifying only the new slug.
-  await broadcastToolListChanged(parsed.data.slug === undefined ? row.slug : undefined);
+  await broadcastToolListChanged(data.slug === undefined ? row.slug : undefined);
   res.json(row);
 });
 
@@ -155,28 +166,24 @@ serversRouter.get('/:id/tools', async (req, res) => {
 
 /** Enable/disable many of a server's tools in one write — the per-server master switch. */
 serversRouter.patch('/:id/tools', async (req, res) => {
-  const parsed = z
-    .object({ enabled: z.boolean(), tools: z.array(z.string().min(1)).min(1) })
-    .safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
-    return;
-  }
-  const updated = await setToolsEnabled(String(req.params.id), parsed.data.tools, parsed.data.enabled);
-  const slug = await slugFor(String(req.params.id));
-  if (slug) await broadcastToolListChanged(slug);
+  const data = parseBody(
+    z.object({ enabled: z.boolean(), tools: z.array(z.string().min(1)).min(1) }),
+    req,
+    res,
+  );
+  if (!data) return;
+  const id = String(req.params.id);
+  const updated = await setToolsEnabled(id, data.tools, data.enabled);
+  await broadcastForServer(id);
   res.json({ ok: true, updated });
 });
 
 /** Enable/disable a single tool for a server. */
 serversRouter.patch('/:id/tools/:toolName', async (req, res) => {
-  const parsed = z.object({ enabled: z.boolean() }).safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
-    return;
-  }
-  await setToolEnabled(String(req.params.id), String(req.params.toolName), parsed.data.enabled);
-  const slug = await slugFor(String(req.params.id));
-  if (slug) await broadcastToolListChanged(slug);
+  const data = parseBody(z.object({ enabled: z.boolean() }), req, res);
+  if (!data) return;
+  const id = String(req.params.id);
+  await setToolEnabled(id, String(req.params.toolName), data.enabled);
+  await broadcastForServer(id);
   res.json({ ok: true });
 });
