@@ -1,4 +1,13 @@
-import { Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
+import {
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@carbon/react';
 import { api, usePaged, usePoll } from '../api';
 
 export default function Users() {
@@ -12,28 +21,30 @@ export default function Users() {
       <p style={{ color: 'var(--cds-text-secondary)', marginBottom: '1.5rem' }}>
         Identities decoded from the bearer token on each proxied call.
       </p>
-      <Table size="lg">
-        <TableHead>
-          <TableRow>
-            <TableHeader>User</TableHeader>
-            <TableHeader>Tool calls</TableHeader>
-            <TableHeader>First seen</TableHeader>
-            <TableHeader>Last seen</TableHeader>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {pageItems.map((u) => (
-            <TableRow key={u.id}>
-              <TableCell>
-                <code>{u.externalId}</code>
-              </TableCell>
-              <TableCell>{u.calls}</TableCell>
-              <TableCell>{new Date(u.firstSeen).toLocaleString()}</TableCell>
-              <TableCell>{new Date(u.lastSeen).toLocaleString()}</TableCell>
+      <TableContainer>
+        <Table size="lg">
+          <TableHead>
+            <TableRow>
+              <TableHeader>User</TableHeader>
+              <TableHeader>Tool calls</TableHeader>
+              <TableHeader>First seen</TableHeader>
+              <TableHeader>Last seen</TableHeader>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {pageItems.map((u) => (
+              <TableRow key={u.id}>
+                <TableCell>
+                  <code>{u.externalId}</code>
+                </TableCell>
+                <TableCell>{u.calls}</TableCell>
+                <TableCell>{new Date(u.firstSeen).toLocaleString()}</TableCell>
+                <TableCell>{new Date(u.lastSeen).toLocaleString()}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
       <Pagination
         totalItems={users.length}
         pageSize={20}
