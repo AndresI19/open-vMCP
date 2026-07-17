@@ -1,6 +1,7 @@
 import "../src/env.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { mockToken } from "./mock-token.js";
 
 // Ad-hoc MCP client through the gateway.
 //   tsx scripts/call.ts <slug> <user> [toolName] [argsJson]
@@ -12,8 +13,8 @@ if (!slug || !user) {
 }
 
 const gw = "http://localhost:8001";
-const token = (await (await fetch(`${gw}/auth/mock-token?user=${encodeURIComponent(user)}`)).json())
-  .token as string;
+// Local dev bearer (the /auth/mock-token minter is gone); works only with auth.verify:false.
+const token = mockToken(user);
 
 const client = new Client({ name: "call-cli", version: "0.0.0" }, { capabilities: {} });
 await client.connect(

@@ -91,6 +91,19 @@ export function setMcpUrl(url: string | undefined): void {
   if (url) MCP = url.replace(/\/$/, '');
 }
 
+// The platform home page the dashboard's "← Home" link points at (HOME_URL env, default "/"). Resolved
+// once from /vmcp/config.json at boot alongside apiBase/mcpUrl, so App reads it without a second fetch.
+let HOME = '/';
+
+export function setHomeUrl(url: string | undefined): void {
+  if (url) HOME = url;
+}
+
+/** The platform home URL, resolved at boot. Defaults to "/" (the local, same-origin deploy). */
+export function homeUrl(): string {
+  return HOME;
+}
+
 /** The endpoint an external MCP client should connect to. Absolute in production, same-origin locally. */
 export function mcpEndpoint(): string {
   return MCP || `${window.location.origin}/mcp`;

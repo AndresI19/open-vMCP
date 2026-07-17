@@ -9,8 +9,8 @@ import {
   SideNavLink,
   SkipToContent,
 } from '@carbon/react';
-import { useEffect, useState } from 'react';
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
+import { homeUrl } from './api';
 import Account from './components/Account';
 import Toasts from './components/Toasts';
 import AllTools from './pages/AllTools';
@@ -32,14 +32,9 @@ const NAV = [
 
 export default function App() {
   const { pathname } = useLocation();
-  // Link back to the platform home page; its URL is provided by the server (HOME_URL env, default "/").
-  const [homeUrl, setHomeUrl] = useState('/');
-  useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}config.json`)
-      .then((r) => r.json())
-      .then((c: { homeUrl?: string }) => setHomeUrl(c.homeUrl || '/'))
-      .catch(() => {});
-  }, []);
+  // Link back to the platform home page; its URL (HOME_URL env, default "/") is resolved from
+  // /vmcp/config.json at boot (see main.tsx) — no separate fetch here.
+  const home = homeUrl();
 
   return (
     // HeaderContainer owns the "is the nav open?" state and hands it to the menu button and SideNav
@@ -66,7 +61,7 @@ export default function App() {
               onClick={onClickSideNavExpand}
             />
             {/* Top-left, ahead of the product name: the conventional "home" slot, matching the other apps. */}
-            <a className="home-link" href={homeUrl} aria-label="Back to home">
+            <a className="home-link" href={home} aria-label="Back to home">
               ← Home
             </a>
             <HeaderName href={import.meta.env.BASE_URL} prefix="vMCP">
