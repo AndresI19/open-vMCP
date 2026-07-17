@@ -12,8 +12,10 @@ import {
   Tile,
 } from '@carbon/react';
 import { api, usePaged, usePoll } from '../api';
+import { useCardLabels } from '../components/useCardLabels';
 
 export default function ToolUsage() {
+  const cards = useCardLabels();
   const { data: tools } = usePoll(api.byTool);
   const rows = tools ?? [];
   const { page, setPage, pageItems } = usePaged(rows);
@@ -41,28 +43,30 @@ export default function ToolUsage() {
         />
       </Tile>
 
-      <TableContainer>
-        <Table size="lg">
-          <TableHead>
-            <TableRow>
-              <TableHeader>Tool</TableHeader>
-              <TableHeader>Total</TableHeader>
-              <TableHeader>OK</TableHeader>
-              <TableHeader>Errors</TableHeader>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {pageItems.map((t) => (
-              <TableRow key={t.tool}>
-                <TableCell>{t.tool}</TableCell>
-                <TableCell>{t.total}</TableCell>
-                <TableCell>{t.ok}</TableCell>
-                <TableCell>{t.errors}</TableCell>
+      <div ref={cards}>
+        <TableContainer>
+          <Table size="lg">
+            <TableHead>
+              <TableRow>
+                <TableHeader>Tool</TableHeader>
+                <TableHeader>Total</TableHeader>
+                <TableHeader>OK</TableHeader>
+                <TableHeader>Errors</TableHeader>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {pageItems.map((t) => (
+                <TableRow key={t.tool}>
+                  <TableCell>{t.tool}</TableCell>
+                  <TableCell>{t.total}</TableCell>
+                  <TableCell>{t.ok}</TableCell>
+                  <TableCell>{t.errors}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </div>
       <Pagination
         totalItems={rows.length}
         pageSize={20}

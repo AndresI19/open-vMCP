@@ -97,6 +97,69 @@ body {
   overscroll-behavior-x: contain;
 }
 
+/* ON A PHONE, A ROW STOPS BEING A ROW.
+   ────────────────────────────────────────────────────────────────────────────────────────────────
+   Scrolling (above) makes the far columns REACHABLE; it does not make seven columns a sensible shape
+   for 390px. And the column widths were actively wrong: `overflow-wrap: anywhere` below tells the
+   browser's automatic table layout that a breakable column's min-content width is ONE CHARACTER, so
+   the column holding the longest value — the user id, the upstream URL — collapsed to ~40px and
+   shredded a uuid into ten 4-character lines, while First seen / Last seen kept room to spare. The
+   wrap fix wrecked the columns.
+
+   So below 560px each row becomes a card of labelled lines. There are no columns, so there is nothing
+   to squeeze and nothing to leave idle. The label comes from the column's own <TableHeader>, copied
+   onto the cell by useCardLabels() — the header is the label, so the two cannot drift.
+
+   The cost, accepted: you lose column scanning on a phone. Seven columns at 390px never gave you that
+   anyway; it gave you ten-line uuids. */
+@media (max-width: 560px) {
+  .cds--data-table thead {
+    /* The headers move INTO the rows (as ::before), so the header row would be a duplicate. */
+    display: none;
+  }
+  .cds--data-table,
+  .cds--data-table tbody,
+  .cds--data-table tr,
+  .cds--data-table td {
+    display: block;
+    width: 100%;
+  }
+  .cds--data-table tr {
+    border: 1px solid var(--cds-border-subtle, #e0e0e0);
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--cds-layer, #fff);
+  }
+  .cds--data-table td {
+    /* label | value. minmax() stops a long label from starving the value — the exact failure this
+       whole block exists to undo. */
+    display: grid;
+    grid-template-columns: minmax(6rem, 38%) 1fr;
+    gap: 0.75rem;
+    align-items: baseline;
+    /* Carbon fixes a row height for the table shape; a card sizes to its content. */
+    height: auto;
+    min-height: 0;
+    padding: 0.4rem 0;
+    border: 0;
+    border-bottom: 1px solid var(--cds-border-subtle-01, #f4f4f4);
+  }
+  .cds--data-table tr td:last-child {
+    border-bottom: 0;
+  }
+  .cds--data-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--cds-text-secondary, #525252);
+  }
+  /* A cell with no header (an actions column) spans the full width rather than leaving a blank label
+     column beside a button. */
+  .cds--data-table td:not([data-label]) {
+    display: block;
+  }
+}
+
 /* Charts size themselves to their container via a ResizeObserver. If that measurement lands wider
    than the phone (or simply has not settled yet), the chart bleeds out of its tile and off the page.
    Scrolling it INSIDE its own box keeps the overflow attached to the chart — which is the thing that
