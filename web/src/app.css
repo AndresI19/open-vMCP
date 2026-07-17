@@ -125,6 +125,13 @@ body {
     width: 100%;
   }
   .cds--data-table tr {
+    /* height:auto is the load-bearing line here, not the border.
+       Carbon pins a ROW height for the table shape — 48px on size="lg" — and that survives
+       `display: block`, because display and height are different properties. The card then holds four
+       stacked cells of ~32px inside a box still declared to be 48px tall, so the content spilled out
+       of the row and printed on top of the next one. Every card overlapped its neighbour. The cells
+       were already released below; the row was not, and a row that cannot grow is not a card. */
+    height: auto;
     border: 1px solid var(--cds-border-subtle, #e0e0e0);
     border-radius: 4px;
     margin-bottom: 0.75rem;
