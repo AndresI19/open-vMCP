@@ -3,15 +3,10 @@ import { useEffect, useState } from 'react';
 import { current, isAdmin, signIn, signOut, subscribe } from '../auth';
 
 /**
- * The account control, top-right of the header.
- *
- * It shows who you are, whether you are elevated, and lets you sign out. Signing in here signs you in
- * everywhere — the identity lives under the same localStorage key the other front ends read, so the
- * three apps are one session, not three.
- *
- * The code is behind a reveal rather than printed. Not because seeing it is dangerous — anyone at
- * this keyboard already holds the session — but because people screen-share dashboards, and a
- * credential parked permanently in the corner of a demo is a credential that leaves the room.
+ * The account control, top-right. Shows who you are, whether you're elevated, and signs out. Signing
+ * in here signs you in everywhere — one localStorage key across all three front ends, one session.
+ * The code is behind a reveal, not printed: people screen-share dashboards, and a credential parked
+ * in the corner of a demo is one that leaves the room.
  */
 export default function Account() {
   const [, force] = useState(0);
@@ -98,8 +93,7 @@ export default function Account() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
-              {/* PasswordInput, not TextInput: this is a credential, and it should not be sitting in
-                  plain text on a screen that gets shared. */}
+              {/* PasswordInput, not TextInput: a credential shouldn't sit in plain text on a shared screen. */}
               <PasswordInput
                 id="acct-code"
                 labelText="Code"

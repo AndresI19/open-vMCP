@@ -10,12 +10,10 @@ import { setApiBase, setMcpUrl } from './api';
 const PREFIX = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 /**
- * Resolve the API origin BEFORE the first render. The pages start polling as soon as they mount, so
- * if the base were applied after mounting, the first round of requests would race it and go to the
- * wrong origin — visible as a flash of "failed to fetch" on load in the split deployment.
- *
- * config.json itself is always same-origin (it is what tells us where the API is), and a failure to
- * read it is not fatal: the default base is same-origin, which is exactly the local deployment.
+ * Resolve the API origin BEFORE first render. Pages poll on mount, so applying the base afterwards
+ * would race the first requests to the wrong origin — a flash of "failed to fetch" in the split
+ * deploy. config.json is always same-origin, and failing to read it is not fatal: the default base is
+ * same-origin, the local deploy.
  */
 async function boot(): Promise<void> {
   try {

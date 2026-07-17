@@ -1,15 +1,10 @@
 /**
- * Identity for the dashboard.
+ * Identity for the dashboard. A deliberate near-copy of @platform/ui/auth: the other front ends are
+ * vanilla TS and vendor the package, but this one is React in a separate workspace, and pulling the
+ * design system in for one module would drag a whole dependency chain along.
  *
- * A deliberate near-copy of @platform/ui/auth, and it is worth saying why rather than pretending it
- * is fine. The other two front ends are vanilla TypeScript and share the package by vendoring it;
- * this one is React, in a separate workspace with its own build, and pulling the design system in
- * here to get one module would drag a whole dependency chain behind it for no other benefit.
- *
- * The duplication is real and it will drift. What must NOT drift is the storage key — both read the
- * same `platform:identity`, so signing in on the home page signs you in here, and signing out on
- * either signs you out of both. The shape of that record is the contract; this file is one of two
- * implementations of it.
+ * The duplication will drift. What must NOT drift is the storage key — both read `platform:identity`,
+ * so signing in/out on the home page does the same here. That record's shape is the contract.
  */
 
 const KEY = 'platform:identity';
@@ -51,11 +46,9 @@ export const current = (): Identity | null => identity;
 export const isSignedIn = (): boolean => identity?.mode === 'user' && Boolean(identity.token);
 
 /**
- * Admin, read from the SIGNED token.
- *
- * Used only to decide what to RENDER. Every write is checked again on the server against the same
- * claim — hiding a button is a courtesy, and the lock is on the door, not on the sign. Editing this
- * value in localStorage would reveal the controls and change nothing: the API would still say 403.
+ * Admin, read from the SIGNED token — used only to decide what to RENDER. Every write is re-checked
+ * on the server against the same claim: hiding a button is a courtesy, editing this in localStorage
+ * reveals the controls and changes nothing (the API still 403s).
  */
 export const isAdmin = (): boolean => identity?.mode === 'user' && identity.admin === true;
 

@@ -3,7 +3,7 @@
 A **virtual MCP gateway** you can read in an afternoon. One endpoint in front of every MCP server you
 run, with per-server and per-tool policy, and a record of every call that crosses it.
 
-The server is **~2,000 lines of TypeScript across 29 files** — a proof of concept and reference
+The server is **~2,000 lines of TypeScript across 29 files** — a proof-of-concept reference
 implementation, small enough to read end to end with each moving part in one obvious place.
 
 Claude connects to the portal instead of the upstream server. Every frame passes through verbatim, and
@@ -22,9 +22,9 @@ Production MCP gateways exist and they are good. If you need one, use theirs:
 | [TheLunarCompany/lunar](https://github.com/TheLunarCompany/lunar) | per-tool policy, per-consumer RBAC, audit logs, rate limiting |
 | [AmoyLab/Unla](https://github.com/AmoyLab/Unla) | turns existing REST APIs into MCP servers |
 
-`open-vMCP` does not try to out-feature any of them. Its RBAC is a documented *seam*, not an
-implementation. What it offers instead is a complete, working vMCP whose every mechanism — aggregation,
-tool policy, telemetry, `listChanged`, session lifecycle — is small enough to hold in your head.
+`open-vMCP` does not try to out-feature them. Its RBAC is a documented *seam*, not an implementation.
+What it offers is a complete, working vMCP whose every mechanism — aggregation, tool policy,
+telemetry, `listChanged`, session lifecycle — is small enough to hold in your head.
 
 Inspired by [MintMCP](https://www.mintmcp.com/).
 
@@ -79,8 +79,8 @@ Open the dashboard at <http://localhost:8001/vmcp/>.
 
 The gateway needs a bearer token. The committed `config/auth.json` has `verify: true` and validates
 real JWTs from platform-auth. For standalone local dev, set `verify: false` and pass any
-base64url-encoded JSON payload (e.g. `{"sub":"alice","username":"alice","admin":true}`) as the token —
-decoded, not signature-checked. Then point an MCP client at either endpoint.
+base64url-encoded JSON payload (e.g. `{"sub":"alice","username":"alice","admin":true}`) as the token,
+decoded not signature-checked. Then point an MCP client at either endpoint.
 
 The **aggregate** endpoint fronts every enabled upstream at once, namespacing tools as
 `<server>__<tool>`:
@@ -187,21 +187,21 @@ web/src/                 Vite + @carbon/react + @carbon/charts-react dashboard
 
 ## Notes & roadmap
 
-- **RBAC** (only certain servers visible to certain users) has its seam in place:
-  `visibleServers(userId)`. v1 policy is open (all enabled servers visible to all users); RBAC changes
-  only that one function (the `user_server_access` join table is deferred until then). Constraint
-  documented there: "disabled" may be stated plainly, but "not permitted" must stay indistinguishable
-  from "does not exist", or the error becomes an enumeration oracle.
+- **RBAC** (which servers each user sees) has its seam in place: `visibleServers(userId)`. v1 policy
+  is open (all enabled servers to all users); RBAC changes only that function (the
+  `user_server_access` join table is deferred until then). Constraint documented there: "disabled" may
+  be stated plainly, but "not permitted" must stay indistinguishable from "does not exist" or the
+  error becomes an enumeration oracle.
 - **Auth**: `verify: true` (the committed default) validates RS256 JWTs against platform-auth's JWKS;
   `verify: false` decodes without checking the signature (local/mock). Data-API writes require an
   `admin` claim; reads are open.
 - **Notifications**: the gateway advertises `tools.listChanged` and pushes
   `notifications/tools/list_changed` to live sessions on every registry mutation. Delivery is
   best-effort — the MCP SDK drops a notification silently when a client holds no standalone SSE stream,
-  so `broadcastToolListChanged` cannot distinguish "delivered" from "dropped". The call-time refusal is
-  the guarantee; the notification is the optimization.
-- **Sessions** are process-local (`mcp/sessions.ts`), so the gateway is single-replica. Bridging
-  replicas means Postgres `LISTEN`/`NOTIFY`. An unrecognized session id returns **404**, per the MCP
+  so `broadcastToolListChanged` can't tell "delivered" from "dropped". The call-time refusal is the
+  guarantee; the notification is the optimization.
+- **Sessions** are process-local (`mcp/sessions.ts`), so the gateway is single-replica; bridging
+  replicas means Postgres `LISTEN`/`NOTIFY`. An unrecognized session id returns **404** per the MCP
   spec, so a client discards it and re-initializes rather than replaying a dead id forever.
 </content>
 </invoke>

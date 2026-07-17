@@ -35,13 +35,11 @@ export default function Servers() {
 
   const [form, setForm] = useState({ slug: '', name: '', url: '', transport: 'sse' });
 
-  // NOT window.location.origin. The dashboard is served from the FRONT-END host, which deliberately
-  // does not serve /mcp — it answers with a 404 naming the api host, so that a misconfigured client
-  // fails loudly instead of getting the home page's SPA catch-all with a 200. Deriving the endpoint
-  // from the page's own origin would therefore print an address that is guaranteed not to work in
-  // production. mcpEndpoint() comes from /vmcp/config.json: same-origin locally, the api host in
-  // production. (It cannot be the in-cluster Service address either — the client reading this runs
-  // outside the cluster, where cluster DNS does not resolve.)
+  // NOT window.location.origin: the dashboard is served from the FRONT-END host, which doesn't serve
+  // /mcp (it 404s naming the api host so a misconfigured client fails loudly), so the page origin
+  // would print an address guaranteed to fail in production. mcpEndpoint() comes from
+  // /vmcp/config.json: same-origin locally, the api host in production — not the in-cluster Service
+  // address either, since the client reading this runs outside the cluster.
   const origin = mcpEndpoint().replace(/\/mcp$/, '');
 
   async function addServer() {
@@ -188,10 +186,8 @@ export default function Servers() {
         />
       </div>
 
-      {/* The write surface. Only rendered for an admin — and this is a courtesy, not the defence:
-          the server rejects the POST from anyone else with a 403 regardless of what is on screen. A
-          non-admin sees the read-only note instead, so the absence of the form is explained rather
-          than mysterious. */}
+      {/* The write surface, admin-only as a courtesy not a defence — the server 403s the POST from
+          anyone else regardless. A non-admin sees the read-only note instead. */}
       {!isAdmin() && (
         <Tile style={{ marginBottom: '1.5rem' }}>
           <p style={{ color: 'var(--cds-text-secondary)', fontSize: '0.85rem' }}>

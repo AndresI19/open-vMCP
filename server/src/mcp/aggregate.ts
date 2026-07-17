@@ -13,14 +13,13 @@ import { previewText } from './proxy.js';
 import { recordToolCall } from './telemetry.js';
 import { UPSTREAM_TIMEOUT_MS, connectUpstream, withTimeout } from './upstream.js';
 
-// The `${slug}__${name}` namespacing contract lives in ./naming.js; re-exported so callers
-// (and the characterization tests) still read NS from the aggregate module.
+// The `${slug}__${name}` namespacing contract lives in ./naming.js; re-exported so callers (and
+// tests) still read NS from this module.
 export { NS };
 
 /**
- * Collapse newlines and tabs before a user-controlled value (a qualified tool name, a user id, an
- * upstream error string) reaches a log line, so a crafted value cannot forge extra log entries —
- * CWE-117, log injection. Every dynamic value interpolated into the logs below passes through here.
+ * Collapse newlines/tabs in a user-controlled value before it reaches a log line, so a crafted value
+ * can't forge log entries (CWE-117, log injection). Every dynamic value logged below passes through.
  */
 const s1 = (v: unknown): string => String(v ?? '').replace(/[\n\r\t]/g, ' ');
 
@@ -42,13 +41,10 @@ export interface CollectedTools {
 }
 
 /**
- * Fan tools/list out across every server visible to `userId` and flatten the results
- * into one namespaced catalog. Upstreams are queried in parallel and each is opened and
- * closed per request — a slow or unreachable server lands in `errors` instead of
- * failing the whole listing.
- *
- * Visibility routes through visibleServers(), the single access-control seam, so when
- * RBAC lands an anonymous caller's catalog narrows without touching this file.
+ * Fan tools/list across every server visible to `userId`, flattened into one namespaced catalog.
+ * Upstreams are queried in parallel, opened/closed per request — a slow or unreachable one lands in
+ * `errors` instead of failing the listing. Visibility routes through visibleServers(), the single
+ * access-control seam, so RBAC narrows the catalog without touching this file.
  */
 export async function collectTools(userId: string | null, bearer?: string): Promise<CollectedTools> {
   const servers = await visibleServers(userId);
@@ -83,8 +79,8 @@ export async function collectTools(userId: string | null, bearer?: string): Prom
 }
 
 /**
- * Map a qualified name back to an upstream the given user may see. Delegates the split to
- * matchQualified (naming.js) so the `__`-in-toolname / longest-slug-wins rules live in one place.
+ * Map a qualified name back to an upstream the user may see. Delegates the split to matchQualified
+ * (naming.js) so the `__`-in-toolname / longest-slug-wins rules live in one place.
  */
 export async function resolveQualified(
   userId: string | null,
@@ -94,8 +90,8 @@ export async function resolveQualified(
 }
 
 /**
- * Match against every registered server, visibility ignored — used only to explain why a
- * call was refused. Routing still goes through resolveQualified.
+ * Match against every registered server, visibility ignored — only to explain why a call was
+ * refused. Routing still goes through resolveQualified.
  */
 async function resolveQualifiedUnfiltered(
   qualified: string,
@@ -121,11 +117,9 @@ async function handleListTools(ctx: AggregateContext): Promise<{ tools: Tool[] }
 }
 
 /**
- * tools/call handler body: resolve a qualified name, apply gateway policy (identity, disabled
- * server/tool), then forward the UNqualified call to the upstream and record telemetry.
- *
- * Invoking a tool is gated even though listing is not — otherwise the gateway would be an
- * unauthenticated relay to every upstream it knows about (config/auth.json `onMissing`).
+ * tools/call handler: resolve a qualified name, apply gateway policy (identity, disabled server/tool),
+ * forward the UNqualified call, record telemetry. Calling is gated even though listing is not —
+ * otherwise the gateway is an unauthenticated relay to every upstream (auth.json `onMissing`).
  */
 async function handleToolCall(
   ctx: AggregateContext,
@@ -150,10 +144,9 @@ async function handleToolCall(
 
   const resolved = await resolveQualified(ctx.userId, qualified);
   if (!resolved) {
-    // A name can miss for two reasons, and the caller must be told them apart.
-    // Disabled: the client is holding a stale catalog — say so, or it retries the name
-    // as if it had typed it wrong. Not permitted (once RBAC lands) or genuinely absent:
-    // both stay "unknown", so the error never confirms a server the caller can't see.
+    // A miss has two causes the caller must be told apart. Disabled: the client holds a stale
+    // catalog — say so, or it retries as if mistyped. Not-permitted (once RBAC lands) or absent both
+    // stay "unknown", so the error never confirms a server the caller can't see.
     const hidden = await resolveQualifiedUnfiltered(qualified);
     if (hidden && !hidden.server.enabled) {
       await recordToolCall({
@@ -298,20 +291,16 @@ async function handleToolCall(
 }
 
 /**
- * Build the downstream MCP Server for the aggregate endpoint (`/mcp`, no slug), which
- * fronts every visible upstream at once. This is thin wiring: the tools/list and tools/call
- * bodies live in handleListTools / handleToolCall above.
- *
- * Reading the catalog is open; invoking a tool is not. tools/list answers anonymously so
- * a client can discover what the gateway fronts, while tools/call still honours
- * config/auth.json `onMissing` — otherwise the gateway would be an unauthenticated relay
- * to every upstream it knows about. Set `onMissing: "anonymous"` to open calls too.
+ * Build the downstream MCP Server for the aggregate endpoint (`/mcp`, no slug), fronting every
+ * visible upstream at once. Thin wiring: the handler bodies live in handleListTools/handleToolCall.
+ * Reading the catalog is open; calling honours auth.json `onMissing` (set it to "anonymous" to open
+ * calls too), else the gateway would be an unauthenticated relay to every upstream.
  */
 export function buildAggregateServer(ctx: AggregateContext): Server {
   const server = new Server(
     { name: 'vmcp:aggregate', version: '0.1.0' },
-    // listChanged: the catalog is mutable at runtime (dashboard toggles), so clients are
-    // told to re-list rather than run forever on their connect-time snapshot.
+    // listChanged: the catalog is mutable at runtime (dashboard toggles), so clients re-list rather
+    // than run forever on their connect-time snapshot.
     { capabilities: { tools: { listChanged: true } } },
   );
 

@@ -23,9 +23,8 @@ export async function setToolEnabled(serverId: string, toolName: string, enabled
 }
 
 /**
- * Upsert many tools' enabled flags in one statement. Backs the dashboard's "enable all"
- * switch: a single atomic write rather than one request per tool, so a bulk toggle can't
- * land half-applied.
+ * Upsert many tools' enabled flags in one statement — backs the "enable all" switch as a single
+ * atomic write, so a bulk toggle can't land half-applied.
  */
 export async function setToolsEnabled(
   serverId: string,

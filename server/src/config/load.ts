@@ -10,18 +10,16 @@ export const claimMappingSchema = z.object({
 });
 
 /**
- * Data-driven auth config. v1 is fully mocked (verify:false → decode only). The
- * shape already carries the fields real validation would need, so flipping to a
- * verified/OAuth setup later is a config change, not a code change.
+ * Data-driven auth config. The shape carries every field real validation needs, so switching between
+ * decode-only (verify:false) and verified/OAuth is a config change, not a code change.
  */
 export const authConfigSchema = z.object({
   scheme: z.literal('bearer').default('bearer'),
   verify: z.boolean().default(false),
   secret: z.string().optional(), // HS* shared secret (when verify:true)
   jwksUri: z.string().url().optional(), // RS*/JWKS endpoint (when verify:true)
-  // Checked as part of verification, not decoration: a signature proves a token is genuine, and
-  // these prove it was minted for US. Without them a valid token issued by the same authority for a
-  // different audience would be accepted here.
+  // Checked in verification, not decoration: a signature proves a token genuine, these prove it was
+  // minted for US — without them a valid token for a different audience would be accepted.
   issuer: z.string().optional(),
   audience: z.string().optional(),
   claimMappings: z.array(claimMappingSchema).min(1),

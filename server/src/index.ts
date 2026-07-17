@@ -13,19 +13,15 @@ import { repoRoot } from './paths.js';
 loadAuthConfig();
 
 const app = express();
-// Behind nginx (and Cloudflare in the public deployment), so the real client IP arrives in
-// X-Forwarded-For rather than on the socket — without this the limiter below would see one IP for
-// the whole internet.
+// Behind nginx/Cloudflare, the real client IP is in X-Forwarded-For, not on the socket; without this
+// the limiter below would bucket the whole internet as one IP.
 app.set('trust proxy', true);
 app.use(express.json({ limit: '4mb' }));
 
-// A coarse global cap on MUTATING requests, as defence-in-depth against scraping and brute force.
-// Reads (GET/HEAD/OPTIONS) are SKIPPED deliberately: behind Cloudflare, nginx only ever sees a small
-// set of edge IPs, so `trust proxy` cannot separate real clients — and the dashboard's 5-second
-// polling plus the home page's liveness badges collapse into one shared bucket that 429s everyone
-// (which is exactly what took the badges offline). Limiting only writes (register/toggle a server,
-// call a tool) keeps the protection where abuse matters without throttling the read polling that the
-// platform's status badges depend on. Per-process (single replica); resets on restart.
+// Coarse global cap on MUTATING requests (scraping/brute-force defence-in-depth). Reads are SKIPPED
+// deliberately: behind Cloudflare nginx sees only a few edge IPs, so `trust proxy` can't separate
+// clients, and the dashboard's 5s polling plus the home page's liveness badges would collapse into
+// one bucket that 429s everyone (which took the badges offline). Per-process; resets on restart.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 1000,
@@ -38,12 +34,9 @@ const limiter = rateLimit({
 app.use(limiter);
 
 /**
- * CORS for the data API. Needed only once the dashboard and the API are on different hostnames
- * (front end on andres.…, API on api-andres.…) — in a same-origin deployment CORS_ORIGINS is empty
- * and this middleware does nothing.
- *
- * An explicit allow-list, not `*`: the browser will not send credentials to a wildcard origin, and
- * a wildcard would also let any page on the internet read the call log from a visitor's browser.
+ * CORS for the data API. Only matters when dashboard and API are on different hostnames; in a
+ * same-origin deploy CORS_ORIGINS is empty and this does nothing. Explicit allow-list, not `*`: a
+ * browser won't send credentials to a wildcard origin, and `*` would let any page read the call log.
  */
 const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? '')
   .split(',')
@@ -55,13 +48,10 @@ app.use((req, res, next) => {
   if (origin && CORS_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
-    // Writes are included now. They used not to be, from when the data API was read-only in public
-    // — but the dashboard and the API live on different origins, so a browser PATCH/POST/DELETE
-    // triggers a CORS preflight, and a preflight that answers "GET, HEAD, OPTIONS" makes the browser
-    // BLOCK the write before it is sent. That silently broke every write from the public dashboard,
-    // the admin's included: the request never reached the server, so the app-layer admin check never
-    // ran and the fetch just threw. CORS is not the authorisation boundary — requireAdminForWrites
-    // is — so allowing the methods here loosens nothing; it just lets the request arrive to be judged.
+    // Writes must be listed: dashboard and API are cross-origin, so a PATCH/POST/DELETE preflights,
+    // and a preflight answering only "GET, HEAD, OPTIONS" makes the browser BLOCK the write before it
+    // is sent — the request never arrives, so the app-layer admin check never runs. CORS is not the
+    // authorisation boundary (requireAdminForWrites is), so allowing the methods loosens nothing.
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PATCH, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Access-Control-Max-Age', '600');
@@ -78,10 +68,9 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-// The version this image was built from. Baked into <root>/VERSION by the Dockerfile, which
-// k8s/deploy.sh stamps from the repo's latest git tag (suffixed -snapshot when the source differs
-// from main). Read once at startup — it cannot change without a new image. Absent in a dev checkout,
-// hence "snapshot": an untagged build must not claim to be a release.
+// The version this image was built from. Baked into <root>/VERSION by the Dockerfile (k8s/deploy.sh
+// stamps it from the latest git tag, suffixed -snapshot when source differs from main). Read once —
+// it can't change without a new image. Absent in a dev checkout, hence "snapshot".
 const VERSION = ((): string => {
   try {
     return readFileSync(resolve(repoRoot, 'VERSION'), 'utf8').trim() || 'snapshot';
@@ -93,49 +82,36 @@ app.get('/version', (_req, res) => {
   res.json({ version: VERSION });
 });
 
-// The vMCP endpoints Claude connects to stay at the ROOT path (the reverse proxy routes /mcp/
-// here). Keeping it at root means existing client configs and the mocked bearer flow are
-// unaffected by the dashboard moving under /vmcp/. Identity is resolved for every request but
-// enforced per route: `/mcp/:slug` requires the mocked bearer, while the aggregate `/mcp`
-// catalog is readable anonymously and gates only tool execution.
+// The vMCP endpoints Claude connects to stay at ROOT (the reverse proxy routes /mcp/ here), so
+// existing client configs are unaffected by the dashboard moving under /vmcp/. Identity is resolved
+// for every request but enforced per route: `/mcp/:slug` requires a bearer, while the aggregate
+// `/mcp` catalog is readable anonymously and gates only tool execution.
 app.use('/mcp', identityMiddleware, mcpRouter);
 
-// Everything the Carbon dashboard needs lives under the /vmcp/ prefix (matching the client's
-// Vite `base`), so it serves correctly behind the reverse proxy at /vmcp/ and when hit directly
-// at :8001/vmcp/. The dashboard data API and the mock-token dev helper move under it too.
+// Everything the Carbon dashboard needs lives under the /vmcp/ prefix (matching the client's Vite
+// `base`), so it serves correctly behind the proxy at /vmcp/ and when hit directly at :8001/vmcp/.
 const dash = express.Router();
-// Runtime config for the dashboard. HOME_URL (env, default "/") is the link back to the platform
-// home page — configurable per deployment without rebuilding the client.
+// Runtime config for the dashboard. HOME_URL (env, default "/") links back to the platform home
+// page — configurable per deploy without rebuilding the client.
 dash.get('/config.json', (_req, res) => {
   res.json({
     homeUrl: process.env.HOME_URL || '/',
-    // Where the dashboard should send its data-API calls. Empty means same-origin (the /vmcp/
-    // prefix it is already served from) — the local default. In production this is the API host,
-    // so the front end and the back end are separate origins without rebuilding the client.
+    // Where the dashboard sends its data-API calls. Empty = same-origin (the /vmcp/ prefix it is
+    // served from), the local default; in production this is the API host — separate origins, no
+    // rebuild.
     apiBase: process.env.VMCP_API_BASE || '',
-    // The MCP endpoint to TELL A CLIENT ABOUT — printed on the Overview page's "Connect a client"
-    // panel. It used to be hardcoded to http://localhost:8001, which is only ever right on the
-    // machine the gateway runs on; every public visitor was handed an address that resolves to
-    // their own laptop.
-    //
-    // It cannot be the in-cluster Service address either (vmcp.platform.svc.cluster.local). That
-    // resolves — but only for cluster members: CoreDNS does not answer outside the cluster, and the
-    // 10.96.x.x Service IP is a virtual address that exists only in the node's routing rules. The
-    // client this string is aimed at (Claude Desktop, an SDK) runs OUTSIDE, so it needs the address
-    // that is actually reachable from there.
-    //
-    // Empty = same-origin, which is correct when the dashboard is reached through the same proxy
-    // that serves /mcp. In production the overlay sets this to the public API host.
+    // The MCP endpoint to TELL A CLIENT ABOUT (Overview's "Connect a client" panel). Empty =
+    // same-origin, correct behind the proxy that serves /mcp; in production the overlay sets the
+    // public API host. It must NOT be the page origin (hands every visitor their own laptop) nor the
+    // in-cluster Service address (CoreDNS/10.96.x.x resolve only inside the cluster — this client
+    // runs outside).
     mcpUrl: process.env.MCP_PUBLIC_URL || '',
   });
 });
-// The /auth/mock-token endpoint is GONE. It minted an unsigned alg:none token for the pre-auth
-// world; with verification on, that token is rejected, so it could only ever hand out a credential
-// that does not work. Worse, it was a live minter of forgeable-LOOKING tokens with no legitimate
-// caller left. A client now uses the real bearer from platform-auth, which the dashboard holds.
-// The dashboard API had NO authentication whatsoever — its writes were guarded only by an nginx
-// method filter on the public vhost. Identity is resolved here and writes now require an admin; reads
-// stay open, because a dashboard is for looking at.
+// The /auth/mock-token endpoint is GONE: with verification on it could only mint tokens that get
+// rejected. Clients now use the real bearer from platform-auth. Identity is resolved here and writes
+// require an admin (replacing the old nginx method filter); reads stay open — a dashboard is for
+// looking at.
 dash.use('/api', identityMiddleware, requireAdminForWrites, apiRouter);
 const webDist = resolve(repoRoot, 'web/dist');
 if (existsSync(webDist)) {
@@ -151,13 +127,11 @@ app.use('/vmcp', dash);
 app.get('/', (_req, res) => res.redirect('/vmcp/'));
 
 /**
- * The last middleware, and the only one that catches anything. Until now there was no error handler
- * at all: a failing DB query in /api/calls, /api/stats or /api/users fell through to Express's
- * default, which answers an HTML error page — to a client that asked for JSON and will try to parse
- * it. Every API route now fails as JSON, with the reason in the server log rather than on the wire.
+ * The API error handler: without it a failing DB query falls through to Express's default HTML error
+ * page — to a client parsing JSON. Every API route now fails as JSON, reason in the log not the wire.
  *
- * Must take four arguments. Express identifies error handlers by arity, so dropping the unused
- * `_next` would silently turn this back into an ordinary middleware that never runs.
+ * Must take four arguments: Express identifies error handlers by arity, so dropping the unused
+ * `_next` would silently turn this into an ordinary middleware that never runs.
  */
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[error] %s %s:', req.method, req.originalUrl, err);

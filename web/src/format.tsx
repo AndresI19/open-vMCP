@@ -1,11 +1,9 @@
 import { Tag } from '@carbon/react';
 
 /**
- * How a tool call is rendered. Shared, because it was not: Recent Calls decided a call's colour with
- * `status === "ok" ? "green" : "red"` while Server Detail had a three-way `statusColor()`. Telemetry
- * emits THREE statuses — "ok", "error" and "blocked" — so the same blocked call showed up neutral on
- * one page and as a red failure on the other. A policy-blocked tool is not an error; the gateway did
- * exactly what it was told to do.
+ * How a tool call is rendered, shared so pages agree. Telemetry emits THREE statuses — "ok", "error",
+ * "blocked" — and a policy-blocked tool is NOT an error: without this, a blocked call showed neutral
+ * on one page and red on another.
  */
 export type CallStatus = 'ok' | 'error' | 'blocked' | (string & {});
 
