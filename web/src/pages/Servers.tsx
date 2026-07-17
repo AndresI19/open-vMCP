@@ -7,6 +7,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
@@ -118,60 +119,62 @@ export default function Servers() {
             onSet={setAllEnabled}
           />
         </div>
-        <Table size="lg">
-          <TableHead>
-            <TableRow>
-              <TableHeader>Server</TableHeader>
-              <TableHeader>Name</TableHeader>
-              <TableHeader>Endpoint</TableHeader>
-              <TableHeader>Transport</TableHeader>
-              <TableHeader>Enabled</TableHeader>
-              <TableHeader>Visible to</TableHeader>
-              <TableHeader>Actions</TableHeader>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {pageServers.map((s) => (
-              <TableRow
-                key={s.id}
-                onClick={() => navigate(`/servers/${s.id}`)}
-                onMouseEnter={() => setHovered(s.slug)}
-                onMouseLeave={() => setHovered(null)}
-                style={{ cursor: 'pointer' }}
-              >
-                <TableCell>
-                  <code>{s.slug}</code>
-                </TableCell>
-                <TableCell>{s.name}</TableCell>
-                <TableCell>
-                  <code style={{ fontSize: '0.75rem' }}>{s.url}</code>
-                </TableCell>
-                <TableCell>{s.transport}</TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Toggle
-                    id={`toggle-${s.id}`}
-                    size="sm"
-                    toggled={s.enabled}
-                    labelA=""
-                    labelB=""
-                    aria-label="Enabled"
-                    onToggle={() => toggle(s)}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Tag type="gray" title="RBAC placeholder">
-                    all users
-                  </Tag>
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Button kind="danger--ghost" size="sm" onClick={() => remove(s)}>
-                    Delete
-                  </Button>
-                </TableCell>
+        <TableContainer>
+          <Table size="lg">
+            <TableHead>
+              <TableRow>
+                <TableHeader>Server</TableHeader>
+                <TableHeader>Name</TableHeader>
+                <TableHeader>Endpoint</TableHeader>
+                <TableHeader>Transport</TableHeader>
+                <TableHeader>Enabled</TableHeader>
+                <TableHeader>Visible to</TableHeader>
+                <TableHeader>Actions</TableHeader>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {pageServers.map((s) => (
+                <TableRow
+                  key={s.id}
+                  onClick={() => navigate(`/servers/${s.id}`)}
+                  onMouseEnter={() => setHovered(s.slug)}
+                  onMouseLeave={() => setHovered(null)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <TableCell>
+                    <code>{s.slug}</code>
+                  </TableCell>
+                  <TableCell>{s.name}</TableCell>
+                  <TableCell>
+                    <code style={{ fontSize: '0.75rem' }}>{s.url}</code>
+                  </TableCell>
+                  <TableCell>{s.transport}</TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Toggle
+                      id={`toggle-${s.id}`}
+                      size="sm"
+                      toggled={s.enabled}
+                      labelA=""
+                      labelB=""
+                      aria-label="Enabled"
+                      onToggle={() => toggle(s)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Tag type="gray" title="RBAC placeholder">
+                      all users
+                    </Tag>
+                  </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Button kind="danger--ghost" size="sm" onClick={() => remove(s)}>
+                      Delete
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
         <Pagination
           totalItems={servers.length}
           pageSize={pageSize}

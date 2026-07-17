@@ -79,12 +79,22 @@ body {
   overflow-x: hidden;
 }
 
-/* Data tables are the widest thing here — Recent Calls carries eight columns and will not fit a
+/* Data tables are the widest thing here — Recent Calls carries seven columns and will not fit a
    phone at any sane font size. Let the table scroll within its container rather than shrink its
-   columns into unreadable slivers. */
+   columns into unreadable slivers.
+
+   THIS RULE MATCHED NOTHING UNTIL THE TABLES WERE WRAPPED, and the failure was silent in the worst
+   way. These two classes are emitted only by Carbon's <TableContainer> / <DataTable>; every page here
+   rendered a bare <Table>, so the selector hit zero elements while looking entirely reasonable in the
+   stylesheet. Carbon gives .cds--data-table `width: 100%` with no table-layout:fixed, so a table
+   wider than the viewport overflowed its parent — and `body { overflow-x: hidden }` above turned that
+   overflow into a CLIP. The right-hand columns were not scrollable-but-awkward; they were unreachable.
+   The fix that was written was correct. It was wired to a selector that did not exist. */
 .cds--data-table-content,
 .cds--data-table-container {
   overflow-x: auto;
+  /* A swipe past the last column is not a request to navigate back. */
+  overscroll-behavior-x: contain;
 }
 
 /* Charts size themselves to their container via a ResizeObserver. If that measurement lands wider

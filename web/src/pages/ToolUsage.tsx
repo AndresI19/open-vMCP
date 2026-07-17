@@ -5,6 +5,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
@@ -40,26 +41,28 @@ export default function ToolUsage() {
         />
       </Tile>
 
-      <Table size="lg">
-        <TableHead>
-          <TableRow>
-            <TableHeader>Tool</TableHeader>
-            <TableHeader>Total</TableHeader>
-            <TableHeader>OK</TableHeader>
-            <TableHeader>Errors</TableHeader>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {pageItems.map((t) => (
-            <TableRow key={t.tool}>
-              <TableCell>{t.tool}</TableCell>
-              <TableCell>{t.total}</TableCell>
-              <TableCell>{t.ok}</TableCell>
-              <TableCell>{t.errors}</TableCell>
+      <TableContainer>
+        <Table size="lg">
+          <TableHead>
+            <TableRow>
+              <TableHeader>Tool</TableHeader>
+              <TableHeader>Total</TableHeader>
+              <TableHeader>OK</TableHeader>
+              <TableHeader>Errors</TableHeader>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {pageItems.map((t) => (
+              <TableRow key={t.tool}>
+                <TableCell>{t.tool}</TableCell>
+                <TableCell>{t.total}</TableCell>
+                <TableCell>{t.ok}</TableCell>
+                <TableCell>{t.errors}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
       <Pagination
         totalItems={rows.length}
         pageSize={20}

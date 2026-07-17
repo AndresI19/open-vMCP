@@ -9,6 +9,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
@@ -126,72 +127,76 @@ export default function ServerDetail() {
                 />
               </div>
             )}
-            <Table size="lg">
-              <TableHead>
-                <TableRow>
-                  <TableHeader>Tool</TableHeader>
-                  <TableHeader>Description</TableHeader>
-                  <TableHeader>Enabled</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {tools.map((t) => (
-                  <TableRow key={t.name}>
-                    <TableCell>
-                      <code>{t.name}</code>
-                    </TableCell>
-                    <TableCell>
-                      <div style={{ maxWidth: 560, whiteSpace: 'normal' }}>{t.description}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Toggle
-                        id={`tool-${t.name}`}
-                        size="sm"
-                        toggled={t.enabled && !serverDisabled}
-                        disabled={serverDisabled}
-                        labelA=""
-                        labelB=""
-                        aria-label={`Toggle ${t.name}`}
-                        onToggle={() => toggleTool(t)}
-                      />
-                    </TableCell>
+            <TableContainer>
+              <Table size="lg">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Tool</TableHeader>
+                    <TableHeader>Description</TableHeader>
+                    <TableHeader>Enabled</TableHeader>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {tools.map((t) => (
+                    <TableRow key={t.name}>
+                      <TableCell>
+                        <code>{t.name}</code>
+                      </TableCell>
+                      <TableCell>
+                        <div style={{ maxWidth: 560, whiteSpace: 'normal' }}>{t.description}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Toggle
+                          id={`tool-${t.name}`}
+                          size="sm"
+                          toggled={t.enabled && !serverDisabled}
+                          disabled={serverDisabled}
+                          labelA=""
+                          labelB=""
+                          aria-label={`Toggle ${t.name}`}
+                          onToggle={() => toggleTool(t)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </TabPanel>
 
           <TabPanel>
-            <Table size="lg">
-              <TableHead>
-                <TableRow>
-                  <TableHeader>Time</TableHeader>
-                  <TableHeader>User</TableHeader>
-                  <TableHeader>Tool</TableHeader>
-                  <TableHeader>Arguments</TableHeader>
-                  <TableHeader>Status</TableHeader>
-                  <TableHeader>Latency</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {(calls ?? []).map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell>{fmtTime(c.createdAt)}</TableCell>
-                    <TableCell>
-                      <code>{c.userExternalId ?? DASH}</code>
-                    </TableCell>
-                    <TableCell>{c.toolName}</TableCell>
-                    <TableCell>
-                      <code style={{ fontSize: '0.75rem' }}>{JSON.stringify(c.arguments)}</code>
-                    </TableCell>
-                    <TableCell>
-                      <StatusTag status={c.status} />
-                    </TableCell>
-                    <TableCell>{fmtLatency(c.latencyMs)}</TableCell>
+            <TableContainer>
+              <Table size="lg">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Time</TableHeader>
+                    <TableHeader>User</TableHeader>
+                    <TableHeader>Tool</TableHeader>
+                    <TableHeader>Arguments</TableHeader>
+                    <TableHeader>Status</TableHeader>
+                    <TableHeader>Latency</TableHeader>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {(calls ?? []).map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell>{fmtTime(c.createdAt)}</TableCell>
+                      <TableCell>
+                        <code>{c.userExternalId ?? DASH}</code>
+                      </TableCell>
+                      <TableCell>{c.toolName}</TableCell>
+                      <TableCell>
+                        <code style={{ fontSize: '0.75rem' }}>{JSON.stringify(c.arguments)}</code>
+                      </TableCell>
+                      <TableCell>
+                        <StatusTag status={c.status} />
+                      </TableCell>
+                      <TableCell>{fmtLatency(c.latencyMs)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </TabPanel>
         </TabPanels>
       </Tabs>

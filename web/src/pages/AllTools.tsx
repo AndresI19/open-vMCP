@@ -6,6 +6,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
@@ -94,53 +95,55 @@ export default function AllTools() {
               />
             </div>
           )}
-          <Table size="lg">
-            <TableHead>
-              <TableRow>
-                <TableHeader>Server</TableHeader>
-                <TableHeader>Tool</TableHeader>
-                <TableHeader>Description</TableHeader>
-                <TableHeader>Enabled</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {pageItems.map((t) => (
-                <TableRow
-                  key={`${t.serverSlug}:${t.name}`}
-                  style={t.serverEnabled ? undefined : { opacity: 0.5 }}
-                >
-                  <TableCell>
-                    <Link to={`/servers/${t.serverId}`}>
-                      <Tag type={t.serverEnabled ? 'blue' : 'gray'}>{t.serverSlug}</Tag>
-                    </Link>
-                    {!t.serverEnabled && (
-                      <Tag type="gray" size="sm">
-                        server disabled
-                      </Tag>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <code>{t.name}</code>
-                  </TableCell>
-                  <TableCell>
-                    <div style={{ maxWidth: 520, whiteSpace: 'normal' }}>{t.description}</div>
-                  </TableCell>
-                  <TableCell>
-                    <Toggle
-                      id={`agg-${t.serverSlug}-${t.name}`}
-                      size="sm"
-                      toggled={t.serverEnabled && t.enabled}
-                      disabled={!t.serverEnabled}
-                      labelA=""
-                      labelB=""
-                      aria-label={`Toggle ${t.serverSlug}/${t.name}`}
-                      onToggle={() => toggle(t)}
-                    />
-                  </TableCell>
+          <TableContainer>
+            <Table size="lg">
+              <TableHead>
+                <TableRow>
+                  <TableHeader>Server</TableHeader>
+                  <TableHeader>Tool</TableHeader>
+                  <TableHeader>Description</TableHeader>
+                  <TableHeader>Enabled</TableHeader>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {pageItems.map((t) => (
+                  <TableRow
+                    key={`${t.serverSlug}:${t.name}`}
+                    style={t.serverEnabled ? undefined : { opacity: 0.5 }}
+                  >
+                    <TableCell>
+                      <Link to={`/servers/${t.serverId}`}>
+                        <Tag type={t.serverEnabled ? 'blue' : 'gray'}>{t.serverSlug}</Tag>
+                      </Link>
+                      {!t.serverEnabled && (
+                        <Tag type="gray" size="sm">
+                          server disabled
+                        </Tag>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <code>{t.name}</code>
+                    </TableCell>
+                    <TableCell>
+                      <div style={{ maxWidth: 520, whiteSpace: 'normal' }}>{t.description}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Toggle
+                        id={`agg-${t.serverSlug}-${t.name}`}
+                        size="sm"
+                        toggled={t.serverEnabled && t.enabled}
+                        disabled={!t.serverEnabled}
+                        labelA=""
+                        labelB=""
+                        aria-label={`Toggle ${t.serverSlug}/${t.name}`}
+                        onToggle={() => toggle(t)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
           <Pagination
             totalItems={tools.length}
             pageSize={20}
