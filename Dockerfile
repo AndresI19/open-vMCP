@@ -8,6 +8,14 @@ COPY server/package.json ./server/
 COPY web/package.json ./web/
 RUN npm install
 
+# Cache-bust the source copy and build on every commit. The runtime stage stamps VERSION and the
+# revision label from build-args, independently of what this stage compiled — so a reused build-stage
+# layer would ship OLD code under a FRESH version and revision, an image that labels itself correct
+# while running the previous release (this happened to home at 0.1.42). Referencing GIT_SHA in a RUN
+# here ties the source layers' cache key to the commit; npm install above stays cached.
+ARG GIT_SHA
+RUN echo "build stage source commit: ${GIT_SHA:-unknown}"
+
 # Build, then prune to production dependencies. The runtime runs the COMPILED gateway
 # (node server/dist/…) — it never needs tsc, vite, vitest or drizzle-kit — so those have no business
 # shipping in the image. Migrations run from the compiled server/dist/db/migrate.js against the SQL in
