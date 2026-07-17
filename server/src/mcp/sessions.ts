@@ -13,24 +13,17 @@ export interface Session {
 }
 
 /**
- * sessionId → live downstream session.
- *
- * Process-local: a toggle handled by one gateway replica cannot notify sessions held by
- * another. Single-replica only. Bridging replicas means moving this to Postgres
- * LISTEN/NOTIFY (or Redis pub/sub) and having each replica notify its own sessions.
+ * sessionId → live downstream session. Process-local: a toggle on one replica can't notify sessions
+ * on another, so single-replica only. Bridging replicas means Postgres LISTEN/NOTIFY (or Redis
+ * pub/sub), each replica notifying its own sessions.
  */
 export const sessions = new Map<string, Session>();
 
 /**
- * Tell live clients their tool catalog moved, so they re-issue tools/list instead of
- * running on a snapshot taken at connect time.
- *
- * Aggregate sessions (`slug === null`) fan out across every upstream, so any change
- * reaches them. A per-slug proxy session only cares about its own server — unless
- * `slug` is omitted, meaning "every server changed" (the dashboard master switch).
- *
- * Notification is best-effort: a client with no open GET stream, or one that closed
- * mid-write, must not fail the API request that triggered the broadcast.
+ * Tell live clients their catalog moved, so they re-issue tools/list instead of running on a
+ * connect-time snapshot. Aggregate sessions (`slug === null`) get every change; a per-slug session
+ * gets only its own server's — unless `slug` is omitted, meaning "every server changed" (the master
+ * switch). Best-effort: a client with no open GET stream must not fail the API request that fired it.
  */
 export async function broadcastToolListChanged(slug?: string): Promise<number> {
   const targets = [...sessions.values()].filter(

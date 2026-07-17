@@ -16,11 +16,8 @@ function rpcError(message: string, code = -32000) {
 
 export const mcpRouter = Router();
 
-// ---------------------------------------------------------------------------
-// Aggregate endpoint: `/mcp` with no slug, fronting every visible server at once.
-// Deliberately reachable without a bearer — see buildAggregateServer for where the
-// authentication boundary actually sits (listing is open, calling is not).
-// ---------------------------------------------------------------------------
+// Aggregate endpoint: `/mcp` with no slug, fronting every visible server at once. Reachable without
+// a bearer — see buildAggregateServer for the auth boundary (listing is open, calling is not).
 
 mcpRouter.post('/', async (req: Request, res: Response) => {
   const sid = req.headers['mcp-session-id'] as string | undefined;
@@ -36,10 +33,9 @@ mcpRouter.post('/', async (req: Request, res: Response) => {
     return;
   }
 
-  // An unrecognized session id means the session is gone — the gateway restarted, or it
-  // expired. MCP mandates 404 here, and a compliant client responds by discarding the id
-  // and re-initializing. A 400 reads as "malformed request", so a client that sent a
-  // perfectly well-formed frame has no reason to drop the id, and replays it forever.
+  // An unrecognized session id means the session is gone (gateway restarted, or expired). MCP
+  // mandates 404 so a compliant client discards the id and re-initializes; a 400 reads as
+  // "malformed", so a client that sent a well-formed frame keeps replaying the dead id forever.
   if (sid) {
     res.status(404).json(rpcError('Session not found; reinitialize to start a new session'));
     return;
@@ -76,9 +72,8 @@ mcpRouter.post('/', async (req: Request, res: Response) => {
 });
 
 /**
- * With a session id this is the server→client SSE stream, same as any MCP endpoint.
- * Without one it is a plain JSON view of the aggregate catalog, so `curl /mcp` shows
- * what the gateway fronts instead of a protocol error.
+ * With a session id, the server→client SSE stream. Without one, a plain JSON view of the aggregate
+ * catalog, so `curl /mcp` shows what the gateway fronts instead of a protocol error.
  */
 mcpRouter.get('/', async (req: Request, res: Response) => {
   const sid = req.headers['mcp-session-id'] as string | undefined;
@@ -87,8 +82,7 @@ mcpRouter.get('/', async (req: Request, res: Response) => {
     return;
   }
 
-  // An MCP client opening a stream without a session id is a protocol error, not a
-  // browser asking to look at the catalog.
+  // An MCP client opening a stream without a session id is a protocol error (not a browser peek).
   if (String(req.headers.accept ?? '').includes('text/event-stream')) {
     res.status(400).send('Missing session id');
     return;
@@ -111,9 +105,7 @@ mcpRouter.get('/', async (req: Request, res: Response) => {
 
 mcpRouter.delete('/', (req: Request, res: Response) => handleSessionRequest(req, res));
 
-// ---------------------------------------------------------------------------
 // Per-server endpoint: `/mcp/:slug`, a 1:1 passthrough. Always requires an identity.
-// ---------------------------------------------------------------------------
 
 // POST carries initialize + all JSON-RPC requests.
 mcpRouter.post('/:slug', requireIdentity, async (req: Request, res: Response) => {
@@ -131,10 +123,9 @@ mcpRouter.post('/:slug', requireIdentity, async (req: Request, res: Response) =>
     return;
   }
 
-  // An unrecognized session id means the session is gone — the gateway restarted, or it
-  // expired. MCP mandates 404 here, and a compliant client responds by discarding the id
-  // and re-initializing. A 400 reads as "malformed request", so a client that sent a
-  // perfectly well-formed frame has no reason to drop the id, and replays it forever.
+  // An unrecognized session id means the session is gone (gateway restarted, or expired). MCP
+  // mandates 404 so a compliant client discards the id and re-initializes; a 400 reads as
+  // "malformed", so a client that sent a well-formed frame keeps replaying the dead id forever.
   if (sid) {
     res.status(404).json(rpcError('Session not found; reinitialize to start a new session'));
     return;
@@ -188,8 +179,8 @@ mcpRouter.post('/:slug', requireIdentity, async (req: Request, res: Response) =>
 // GET = the server→client SSE notification stream; DELETE = explicit session end.
 async function handleSessionRequest(req: Request, res: Response) {
   const sid = req.headers['mcp-session-id'] as string | undefined;
-  // Missing id is a malformed request; an id we don't know is a session that no longer
-  // exists. Only the latter tells a client to re-initialize, so they cannot share a code.
+  // Missing id = malformed (400); an unknown id = a session that no longer exists (404). Only the
+  // latter tells a client to re-initialize, so they can't share a code.
   if (!sid) {
     res.status(400).send('Missing session id');
     return;

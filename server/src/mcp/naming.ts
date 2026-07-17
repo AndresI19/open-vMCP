@@ -1,17 +1,11 @@
 /**
- * The tool-namespacing contract for the aggregate endpoint, in one place.
- *
- * The flattened catalog qualifies every upstream tool as `${slug}${NS}${name}` (e.g.
- * `rs-mcp__search_wiki`) because two upstreams may both expose a `search`. `qualify` writes
- * that convention; `matchQualified` is its exact inverse. Keeping the separator and both
- * directions here means the prefix side (aggregate tools/list) and the reverse split
- * (call routing) can never drift apart.
+ * The tool-namespacing contract for the aggregate endpoint, in one place. The flattened catalog
+ * qualifies every upstream tool as `${slug}${NS}${name}` (e.g. `rs-mcp__search_wiki`) because two
+ * upstreams may both expose a `search`. `qualify` and `matchQualified` are exact inverses; keeping
+ * both directions here means the prefix side and the reverse split can't drift apart.
  */
 
-/**
- * Separator between a server slug and the upstream tool name in the aggregate namespace:
- * `rs-mcp__search_wiki`.
- */
+/** Separator between server slug and upstream tool name in the aggregate namespace: `rs-mcp__search_wiki`. */
 export const NS = '__';
 
 /** Qualify an upstream tool name under its server slug for the aggregate catalog. */
@@ -20,10 +14,9 @@ export function qualify(slug: string, name: string): string {
 }
 
 /**
- * Reverse of `qualify`: map a qualified name back to one of `servers`. Matches against the
- * known slug list rather than splitting on NS, so an upstream tool whose own name contains
- * "__" still resolves; longest slug wins so one slug cannot shadow another it happens to
- * prefix.
+ * Reverse of `qualify`: map a qualified name back to one of `servers`. Matches against the known slug
+ * list rather than splitting on NS, so an upstream tool whose own name contains "__" still resolves;
+ * longest slug wins so one slug can't shadow another it prefixes.
  */
 export function matchQualified<S extends { slug: string }>(
   servers: S[],

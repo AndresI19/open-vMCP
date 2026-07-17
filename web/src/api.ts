@@ -71,13 +71,10 @@ export interface AggTool {
   enabled: boolean;
 }
 
-// Where the data API lives. Defaults to same-origin under the prefix the dashboard is served from
-// (import.meta.env.BASE_URL, e.g. '/vmcp/'), which is the local deployment.
-//
-// In production the API is a separate origin (api-andres.project-platform.me), so this is overridden
-// at RUNTIME from /vmcp/config.json — see setApiBase, called by main.tsx before the app renders.
-// Runtime rather than build-time on purpose: the same image then runs locally and in production, and
-// the hostname is a deploy concern, not a compile-time one.
+// Where the data API lives. Defaults to same-origin under the dashboard's serve prefix
+// (import.meta.env.BASE_URL, e.g. '/vmcp/') — the local deploy. In production the API is a separate
+// origin, overridden at RUNTIME from /vmcp/config.json (setApiBase, called before first render):
+// runtime not build-time so one image runs both places — the hostname is a deploy concern.
 let BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 /** Point every subsequent API call at `base` (an absolute origin). Empty/undefined keeps the default. */
@@ -85,10 +82,9 @@ export function setApiBase(base: string | undefined): void {
   if (base) BASE = base.replace(/\/$/, '');
 }
 
-// The MCP endpoint we advertise to clients on the Overview page. Same runtime-config reasoning as
-// BASE above: empty means same-origin (`/mcp` behind whatever proxy served this page), and the
-// deployment supplies the public host. It is deliberately NOT the in-cluster Service address — that
-// only resolves for cluster members, and the client reading this string runs outside the cluster.
+// The MCP endpoint advertised to clients on Overview. Same runtime-config reasoning as BASE: empty =
+// same-origin, the deploy supplies the public host. NOT the in-cluster Service address — that
+// resolves only for cluster members, and the client reading this runs outside the cluster.
 let MCP = '';
 
 export function setMcpUrl(url: string | undefined): void {
@@ -106,20 +102,15 @@ async function get<T>(path: string): Promise<T> {
   return (await r.json()) as T;
 }
 /**
- * Every MUTATION goes through here, so the bearer is attached in one place rather than at each of the
- * seven call sites. Reads deliberately do NOT carry one: the dashboard is meant to be looked at, and
- * the server keeps reads open.
- *
- * A non-admin still gets the request sent and still gets a 403 back. That is on purpose — the UI
- * hides the controls, but hiding is a courtesy, not the defence. The defence is the server.
+ * Every MUTATION goes through here, attaching the bearer in one place. Reads deliberately don't carry
+ * one — the server keeps reads open. Hiding controls from a non-admin is a courtesy; the defence is
+ * the server, which 403s the write regardless.
  */
 const send = async (path: string, init: RequestInit = {}): Promise<Response> => {
-  // Short-circuit a write the caller cannot make. Without an admin claim the server refuses it with a
-  // 403 regardless, so firing the request — and the refresh() every handler runs after it — only buys
-  // a round-trip's delay before the same "not allowed" toast. Answering here instead keeps an
-  // unauthorized click completely INERT: a notification and nothing else, no fetch and no re-render.
-  // The SERVER is still the lock — every write is re-checked there against the signed claim; this is a
-  // courtesy for the person clicking, not the defence.
+  // Short-circuit a write the caller can't make: the server 403s it regardless, so firing it (plus
+  // the handler's refresh()) only buys a round-trip before the same "not allowed" toast. Answering
+  // here keeps an unauthorized click INERT — a notification, no fetch, no re-render. The server is
+  // still the lock; this is a courtesy for the person clicking.
   if (!isAdmin()) {
     notify(
       isSignedIn()
@@ -141,8 +132,8 @@ const send = async (path: string, init: RequestInit = {}): Promise<Response> => 
   for (const [k, v] of Object.entries(await authHeaders())) headers.set(k, v);
   const res = await fetch(BASE + path, { ...init, headers });
 
-  // Defence in depth for the admin path: a token that expired between render and click, or a claim the
-  // server no longer honours, still surfaces here rather than failing in silence.
+  // Defence in depth: a token that expired between render and click, or a claim the server no longer
+  // honours, still surfaces here rather than failing silently.
   if (res.status === 403) {
     notify({
       kind: 'error',

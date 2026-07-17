@@ -21,9 +21,8 @@ export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promis
 }
 
 /**
- * Open an MCP client connection to an upstream server described by a registry row.
- * The gateway is the CLIENT here (facing the real MCP server). If the row opts in
- * to forwardAuth, the caller's bearer is passed through (the RS server ignores it).
+ * Open an MCP client connection to the upstream described by a registry row — the gateway is the
+ * CLIENT here. With forwardAuth the caller's bearer is passed through (the RS server ignores it).
  */
 export async function connectUpstream(server: ServerRow, bearer?: string): Promise<Client> {
   const client = new Client({ name: 'open-vmcp', version: '0.1.0' }, { capabilities: {} });

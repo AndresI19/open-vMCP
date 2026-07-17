@@ -16,11 +16,9 @@ interface Props {
 }
 
 /**
- * One switch that trips all the switches below it.
- *
- * Carbon's Toggle has no indeterminate state, so a partial selection reads as OFF and is
- * called out with a "mixed" tag plus an n-of-m count. That keeps the action unambiguous:
- * unless everything is already on, flipping it turns everything on.
+ * One switch that trips all the switches below it. Carbon's Toggle has no indeterminate state, so a
+ * partial selection reads as OFF, called out with a "mixed" tag and an n-of-m count: unless
+ * everything is already on, flipping it turns everything on.
  */
 export default function MasterToggle({ id, noun, total, enabledCount, disabled, onSet }: Props) {
   const [busy, setBusy] = useState(false);

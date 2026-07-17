@@ -92,8 +92,7 @@ docker rm -f rs-mcp-server && \
 docker rm -f open-vmcp rs-mcp-server vmcp-db
 ```
 
-> **RS logging note:** the `rs-mcp-server` image's normal start script pipes logs through
-> `rotatelogs`, which isn't installed in the image — so its logs would be lost. To get live RS
-> logs for the demo, RS is run with its entrypoint overridden to launch uvicorn directly (stdout →
-> `docker logs`). The proper fix belongs in the rs-mcp-server repo (add `apache2-utils`/rotatelogs
-> to its Dockerfile).
+> **RS logging note:** the `rs-mcp-server` image's start script pipes logs through `rotatelogs`,
+> which isn't installed in the image, so logs would be lost. For the demo, RS runs with its entrypoint
+> overridden to launch uvicorn directly (stdout → `docker logs`). The proper fix is in the
+> rs-mcp-server repo (add `apache2-utils`/rotatelogs to its Dockerfile).

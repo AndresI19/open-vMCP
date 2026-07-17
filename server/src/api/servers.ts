@@ -85,8 +85,8 @@ serversRouter.patch('/:id', async (req, res) => {
     res.status(404).json({ error: 'not found' });
     return;
   }
-  // A slug rename orphans sessions bound to the old slug, which this row no longer names,
-  // so widen the broadcast to everyone rather than notifying only the new slug.
+  // A slug rename orphans sessions bound to the old slug, so widen the broadcast to everyone rather
+  // than notifying only the new slug.
   await broadcastToolListChanged(parsed.data.slug === undefined ? row.slug : undefined);
   res.json(row);
 });

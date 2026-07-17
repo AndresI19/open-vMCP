@@ -8,8 +8,8 @@ declare global {
       userId?: string | null;
       /** The raw bearer token, for optional forwarding upstream. */
       bearer?: string;
-      /** Elevated. Comes from a SIGNED claim, minted by the auth service from a list this service
-       *  cannot read — never from anything the caller asserted about themselves. */
+      /** Elevated. From a SIGNED claim minted by the auth service from a list this service can't
+       *  read — never from anything the caller asserted. */
       isAdmin?: boolean;
     }
   }

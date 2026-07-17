@@ -42,11 +42,10 @@ export default function App() {
   }, []);
 
   return (
-    // Toasts render above everything; HeaderContainer owns the "is the nav open?" state and hands it to the menu button and the
-    // SideNav together. It replaces a hardcoded `expanded`, which was the bug: the nav was pinned
-    // open at EVERY width, and Carbon's rule
-    //     .cds--side-nav--expanded ~ .cds--content { margin-inline-start: 16rem }
-    // then shoved the content 256px to the right — off the side of a phone.
+    // HeaderContainer owns the "is the nav open?" state and hands it to the menu button and SideNav
+    // together, replacing a hardcoded `expanded` that pinned the nav open at EVERY width — and
+    // Carbon's `.cds--side-nav--expanded ~ .cds--content { margin-inline-start: 16rem }` then shoved
+    // the content 256px right, off the side of a phone.
     <HeaderContainer
       render={({
         isSideNavExpanded,
@@ -59,16 +58,14 @@ export default function App() {
           <Toasts />
           <Header aria-label="vMCP Gateway">
             <SkipToContent />
-            {/* Carbon shows this only below its `lg` breakpoint, so the hamburger appears exactly
-                where the nav stops being permanently visible. */}
+            {/* Carbon shows this only below `lg`, where the nav stops being permanently visible. */}
             <HeaderMenuButton
               aria-label={isSideNavExpanded ? 'Close menu' : 'Open menu'}
               aria-expanded={isSideNavExpanded}
               isActive={isSideNavExpanded}
               onClick={onClickSideNavExpand}
             />
-            {/* Top-left corner, ahead of the product name: the conventional place for "home", and the
-                same slot the other apps behind the proxy use. */}
+            {/* Top-left, ahead of the product name: the conventional "home" slot, matching the other apps. */}
             <a className="home-link" href={homeUrl} aria-label="Back to home">
               ← Home
             </a>
@@ -76,15 +73,13 @@ export default function App() {
               Gateway
             </HeaderName>
 
-            {/* Identity, top-right. The same session as the other front ends: they all read one
-                localStorage key, so signing in on the quiz signs you in here. */}
+            {/* Identity, top-right. Same session as the other front ends via one localStorage key. */}
             <Account />
 
-            {/* Rendered INSIDE <Header> on purpose. That is what makes it a child of the header, which
-                is what earns it Carbon's `cds--side-nav--ux` class — and that class is the whole
-                responsive system: it collapses the nav to zero width below `lg` and brings up a
-                dismissable overlay instead. The previous code passed isChildOfHeader={false}, which
-                stripped the class and opted the dashboard out of responsiveness entirely. */}
+            {/* Rendered INSIDE <Header> on purpose: that earns Carbon's `cds--side-nav--ux` class,
+                the whole responsive system — it collapses the nav below `lg` and brings up a
+                dismissable overlay. isChildOfHeader={false} would strip the class and opt out of
+                responsiveness entirely. */}
             <SideNav
               aria-label="Side navigation"
               expanded={isSideNavExpanded}
@@ -99,8 +94,8 @@ export default function App() {
                     as={Link}
                     to={n.to}
                     isActive={pathname === n.to}
-                    // Tapping a link on a phone should also dismiss the overlay it was tapped in;
-                    // otherwise the nav stays draped over the page you just navigated to.
+                    // Tapping a link on a phone also dismisses the overlay, else the nav stays draped
+                    // over the page you navigated to.
                     onClick={() => {
                       if (isSideNavExpanded) onClickSideNavExpand();
                     }}

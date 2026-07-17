@@ -1,13 +1,7 @@
-// A minimal toast bus.
-//
-// It exists so that a failed WRITE surfaces something rather than nothing. The write handlers on the
-// pages mostly fire-and-forget — `await api.deleteServer(id)` with no check on the result — so a 403
-// for a non-admin used to be completely silent: the toggle sprang back, or the row stayed, and the
-// user was left to guess whether they had misclicked or lacked permission.
-//
-// Catching it in one place (the api's `send`, which every mutation goes through) rather than at each
-// of the seven call sites means every write is covered, and a new write route added later is covered
-// automatically instead of being one more place to remember.
+// A minimal toast bus, so a failed WRITE surfaces something. Page handlers mostly fire-and-forget, so
+// a 403 for a non-admin used to be silent (the toggle sprang back, the user left to guess). Catching
+// it in one place — the api's `send`, which every mutation goes through — covers every write,
+// including ones added later.
 
 export interface Toast {
   id: number;
