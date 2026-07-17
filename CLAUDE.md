@@ -22,7 +22,7 @@ npm run dev            # server, tsx watch          (port 8001)
 npm run dev:web        # dashboard, vite            (port 5173, proxies API to :8001)
 npm run build          # tsc (server) + vite build (web)
 npm start              # node dist/index.js
-npm test               # vitest, both workspaces    (21 tests, 3 files)
+npm test               # vitest, both workspaces    (8 test files)
 npm run db:up          # postgres:16 via docker     — HOST PORT 5433, not 5432
 npm run db:migrate     # drizzle
 npm run db:seed        # upserts config/servers.seed.json
@@ -52,21 +52,26 @@ So `rs-mcp-server` (which speaks **only** SSE) is reachable from a modern Stream
 `resolveQualified` matches against the known slug list (longest wins) rather than splitting on `__`,
 so upstream tools whose own names contain `__` still resolve.
 
-## Auth — understand exactly how weak this is
+## Auth
 
-`config/auth.json` + `server/src/auth/`. The bearer token is **base64url-decoded and NOT verified.**
-Any JWT-shaped (or bare base64url-JSON) token is accepted; the `user` claim becomes the user id.
+`config/auth.json` + `server/src/auth/`. Two modes, chosen by the `verify` flag:
 
-- `"verify": false` in the config, and **setting it to `true` changes nothing** — no verification
-  code exists. `secret`/`jwksUri` are in the schema but unused.
-- `/mcp/:slug` requires a token (401 without). `/mcp` (aggregate) deliberately allows anonymous
-  `tools/list`, but `tools/call` refuses without an identity.
-- `GET /vmcp/auth/mock-token?user=<id>` mints an unsigned token.
+- `verify: true` (the committed default) — `verifyToken` (`auth/verify.ts`) checks the JWT's RS256
+  signature against the issuer's JWKS, plus issuer and audience. Algorithm is pinned to RS256, so a
+  forged `alg: none` header cannot pick its own rules. A token it cannot vouch for becomes anonymous.
+- `verify: false` — `decodeJwtPayload` base64url-decodes the payload WITHOUT checking the signature.
+  Any JWT-shaped (or bare base64url-JSON) token is accepted. Local/mock only.
 
-**The whole `/vmcp/api` data API is unauthenticated — including its writes** (register a server,
-delete one, toggle a tool). In the platform, the *public* dashboard is made read-only by **nginx**
-(`limit_except GET HEAD OPTIONS`), not by this app. That is a routing-layer control: bypass nginx and
-the writes are wide open.
+Either way, `claimMappings` maps the payload to `userId` (from `sub`) and a display name. The mocked
+`/auth/mock-token` minter is **gone** — with verification on it could only mint tokens that get
+rejected; real tokens now come from platform-auth.
+
+- `/mcp/:slug` requires an identity (401 without). `/mcp` (aggregate) allows anonymous `tools/list`,
+  but `tools/call` refuses without one.
+- **`/vmcp/api` writes require an admin.** `requireAdminForWrites` (`auth/middleware.ts`) gates any
+  non-GET on the signed `admin` claim (`req.isAdmin`); reads stay open. This REPLACED the old nginx
+  `limit_except GET HEAD OPTIONS` stopgap — the check now lives in the app, on a signed claim, not in
+  the routing layer.
 
 ## Database
 
@@ -95,22 +100,22 @@ or the API becomes an enumeration oracle.
 | `SEED_URL_<SLUG>` | — | per-slug seed URL override |
 | `HOME_URL` | `/` | the dashboard's "← Home" link; served in `/vmcp/config.json` |
 | `VMCP_API_BASE` | `""` | where the SPA sends API calls; served in `/vmcp/config.json` |
+| `MCP_PUBLIC_URL` | `""` | MCP endpoint the dashboard tells a client to use; served in `/vmcp/config.json` |
 | `CORS_ORIGINS` | `""` | comma-separated allow-list |
 | `REDACT_ARGS` | on | redaction is ON unless literally `"false"` |
 | `CONFIG_DIR` | `config` | |
 
-`HOME_URL`, `VMCP_API_BASE`, `CORS_ORIGINS` and `SEED_URL_*` are **not** in `.env.example` — that
-file is incomplete.
+`HOME_URL`, `VMCP_API_BASE`, `MCP_PUBLIC_URL`, `CORS_ORIGINS` and `SEED_URL_*` are **not** in
+`.env.example` — that file is incomplete.
 
 `/vmcp/config.json` is fetched by the SPA **before first render**, which is what lets one image serve
 both the local cluster (same-origin) and the split-origin public deploy with no rebuild.
 
 ## Gotchas
 
-- **The README and DEMO.md are stale on API paths.** They show `localhost:8001/api/servers` and
-  `/auth/mock-token`. The real paths moved under `/vmcp/`: `/vmcp/api/servers`,
-  `/vmcp/auth/mock-token`, dashboard at `/vmcp/`. Only `/mcp*`, `/health` and `/version` remain at
-  the root.
+- **Path layout.** The dashboard, its data API, and `config.json` live under `/vmcp/`
+  (`/vmcp/api/servers`, dashboard at `/vmcp/`). Only `/mcp*`, `/health` and `/version` are at the
+  root — kept there so existing MCP client configs are unaffected by the dashboard's prefix.
 - **`/version` reports the running image, not package.json.** It reads a `VERSION` file baked in by
   the Dockerfile, which `platform-orchestration/k8s/deploy.sh` stamps from this repo's latest git tag
   (suffixed `-snapshot` when the source differs from `main`). A dev checkout has no such file and

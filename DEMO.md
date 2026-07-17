@@ -26,7 +26,7 @@ Postgres as `vmcp-db:5432` (the `rs-mcp` registry row was seeded to the containe
    `[tools/call] <server>/<tool> user=<id> status=… <ms>` per call.
 2. **RS-MCP log window** (ptyxis): `docker logs -f rs-mcp-server` — the upstream server executing the
    proxied tool calls (shows `tool_call_end`, cache hits, and the real upstream API fetches).
-3. **Dashboard**: <http://localhost:8001> — Overview, Tool Usage, Recent Calls (auto-refreshes).
+3. **Dashboard**: <http://localhost:8001/vmcp/> — Overview, Tool Usage, Recent Calls (auto-refreshes).
 
 ## Restart the session, then approve
 
@@ -65,8 +65,8 @@ dashboard's **Recent Calls**.
 ### 3. Confirm end-to-end
 
 ```bash
-curl -s localhost:8001/api/stats/overview            # totals climbed
-curl -s "localhost:8001/api/calls?limit=8"           # your calls, user=andres, server=rs-mcp
+curl -s localhost:8001/vmcp/api/stats/overview            # totals climbed
+curl -s "localhost:8001/vmcp/api/calls?limit=8"          # your calls, user=andres, server=rs-mcp
 ```
 
 ## Handy commands

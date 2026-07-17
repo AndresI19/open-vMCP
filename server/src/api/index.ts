@@ -5,7 +5,7 @@ import { statsRouter } from './stats.js';
 import { toolsRouter } from './tools.js';
 import { usersRouter } from './users.js';
 
-/** Dashboard data API. Open (operator view) — the MCP endpoints are what require auth. */
+/** Dashboard data API. Reads are open; writes require an admin (see requireAdminForWrites). */
 export const apiRouter = Router();
 
 apiRouter.use('/stats', statsRouter);
