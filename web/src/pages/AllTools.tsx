@@ -15,7 +15,7 @@ import {
 } from '@carbon/react';
 import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { type AggTool, api, useAsync, usePaged } from '../api';
+import { type AggregateTool, api, useAsync, usePaged } from '../api';
 import MasterToggle from '../components/MasterToggle';
 import { useCardLabels } from '../components/useCardLabels';
 
@@ -37,7 +37,7 @@ export default function AllTools() {
   // Tools on a disabled server can't be changed, so they don't count toward the master switch.
   const eligible = tools.filter((t) => t.serverEnabled);
 
-  async function toggle(t: AggTool) {
+  async function toggle(t: AggregateTool) {
     if (!t.serverEnabled) return; // blocked: the whole server is disabled
     await api.setToolEnabled(t.serverId, t.name, !t.enabled);
     refresh();

@@ -62,7 +62,7 @@ export interface ToolInfo {
   enabled: boolean;
 }
 
-export interface AggTool {
+export interface AggregateTool {
   serverId: string;
   serverSlug: string;
   serverEnabled: boolean;
@@ -208,7 +208,7 @@ export const api = {
       body: JSON.stringify({ enabled, tools }),
     }),
   callsForServer: (id: string, limit = 100) => get<CallRow[]>(`/api/calls?serverId=${id}&limit=${limit}`),
-  allTools: () => get<{ tools: AggTool[]; errors: { slug: string; error: string }[] }>('/api/tools'),
+  allTools: () => get<{ tools: AggregateTool[]; errors: { slug: string; error: string }[] }>('/api/tools'),
 };
 
 /** Poll a fetcher on an interval; returns latest data, error, and a manual refresh. */

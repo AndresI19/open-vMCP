@@ -22,7 +22,7 @@ export { NS };
  * Collapse newlines/tabs in a user-controlled value before it reaches a log line, so a crafted value
  * can't forge log entries (CWE-117, log injection). Every dynamic value logged below passes through.
  */
-const s1 = (v: unknown): string => String(v ?? '').replace(/[\n\r\t]/g, ' ');
+const logSafe = (v: unknown): string => String(v ?? '').replace(/[\n\r\t]/g, ' ');
 
 export interface AggregateTool extends Tool {
   /** Which upstream this tool came from, before the name was qualified. */
@@ -93,11 +93,11 @@ async function resolveQualifiedUnfiltered(
 async function handleListTools(ctx: AggregateContext): Promise<{ tools: Tool[] }> {
   const { tools, errors } = await collectTools(ctx.userId, ctx.bearer);
   for (const e of errors) {
-    console.warn(`[aggregate tools/list] skipped ${s1(e.slug)}: ${s1(e.error)}`);
+    console.warn(`[aggregate tools/list] skipped ${logSafe(e.slug)}: ${logSafe(e.error)}`);
   }
   console.log(
     `[aggregate tools/list] → ${tools.length} tools from ${new Set(tools.map((t) => t.serverSlug)).size} servers ` +
-      `(user=${s1(ctx.userId ?? '-')})`,
+      `(user=${logSafe(ctx.userId ?? '-')})`,
   );
   // serverSlug is gateway bookkeeping, not part of the MCP Tool shape.
   return { tools: tools.map(({ serverSlug: _slug, ...tool }) => tool) };
@@ -117,7 +117,7 @@ async function handleToolCall(
   const start = performance.now();
 
   if (!ctx.userId && identityRequired()) {
-    console.log(`[aggregate tools/call] ${s1(qualified)} user=- status=unauthorized`);
+    console.log(`[aggregate tools/call] ${logSafe(qualified)} user=- status=unauthorized`);
     return {
       content: [
         {
@@ -148,8 +148,8 @@ async function handleToolCall(
         requestedAt,
       });
       console.log(
-        `[aggregate tools/call] ${s1(hidden.server.slug)}/${s1(hidden.toolName)} ` +
-          `user=${s1(ctx.userId ?? '-')} status=blocked (server disabled)`,
+        `[aggregate tools/call] ${logSafe(hidden.server.slug)}/${logSafe(hidden.toolName)} ` +
+          `user=${logSafe(ctx.userId ?? '-')} status=blocked (server disabled)`,
       );
       return {
         content: [
@@ -162,7 +162,9 @@ async function handleToolCall(
       };
     }
 
-    console.log(`[aggregate tools/call] ${s1(qualified)} user=${s1(ctx.userId ?? '-')} status=unknown`);
+    console.log(
+      `[aggregate tools/call] ${logSafe(qualified)} user=${logSafe(ctx.userId ?? '-')} status=unknown`,
+    );
     return {
       content: [
         {
@@ -190,7 +192,7 @@ async function handleToolCall(
       requestedAt,
     });
     console.log(
-      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=blocked`,
+      `[aggregate tools/call] ${logSafe(row.slug)}/${logSafe(toolName)} user=${logSafe(ctx.userId ?? '-')} status=blocked`,
     );
     return {
       content: [{ type: 'text', text: `Tool "${toolName}" is disabled by the gateway.` }],
@@ -219,7 +221,7 @@ async function handleToolCall(
       requestedAt,
     });
     console.log(
-      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=error (${s1(message)})`,
+      `[aggregate tools/call] ${logSafe(row.slug)}/${logSafe(toolName)} user=${logSafe(ctx.userId ?? '-')} status=error (${logSafe(message)})`,
     );
     return {
       content: [{ type: 'text', text: `Upstream connect failed: ${message}` }],
@@ -250,7 +252,7 @@ async function handleToolCall(
     });
 
     console.log(
-      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
+      `[aggregate tools/call] ${logSafe(row.slug)}/${logSafe(toolName)} user=${logSafe(ctx.userId ?? '-')} ` +
         `status=${isError ? 'error' : 'ok'} ${latencyMs}ms`,
     );
     return result;
@@ -268,8 +270,8 @@ async function handleToolCall(
       requestedAt,
     });
     console.log(
-      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
-        `status=error ${latencyMs}ms (${s1(err instanceof Error ? err.message : String(err))})`,
+      `[aggregate tools/call] ${logSafe(row.slug)}/${logSafe(toolName)} user=${logSafe(ctx.userId ?? '-')} ` +
+        `status=error ${latencyMs}ms (${logSafe(err instanceof Error ? err.message : String(err))})`,
     );
     throw err;
   } finally {
