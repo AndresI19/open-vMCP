@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { configDir } from '../paths.js';
 
 /** A single "where the value lives in the token" → "internal field" mapping. */
-export const claimMappingSchema = z.object({
+const claimMappingSchema = z.object({
   from: z.string().min(1), // dot-path into the token payload, e.g. "user" or "user.id"
   to: z.string().min(1), // internal schema placement, e.g. "userId"
 });
@@ -16,7 +16,6 @@ export const claimMappingSchema = z.object({
 export const authConfigSchema = z.object({
   scheme: z.literal('bearer').default('bearer'),
   verify: z.boolean().default(false),
-  secret: z.string().optional(), // HS* shared secret (when verify:true)
   jwksUri: z.string().url().optional(), // RS*/JWKS endpoint (when verify:true)
   // Checked in verification, not decoration: a signature proves a token genuine, these prove it was
   // minted for US — without them a valid token for a different audience would be accepted.
