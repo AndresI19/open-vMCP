@@ -12,18 +12,18 @@ import type { AuthConfig } from '../config/load.js';
 // One JWKS client per URI, kept for the process's life. `jose` caches the keys, refetches on an
 // unknown `kid` (which is how a rotated signing key is picked up without a redeploy), and rate-limits
 // its own refetches so an attacker cannot make us hammer the auth service by sending junk kids.
-const sets = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+const jwksByUri = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 function jwkSet(uri: string): ReturnType<typeof createRemoteJWKSet> {
-  let s = sets.get(uri);
-  if (!s) {
-    s = createRemoteJWKSet(new URL(uri), {
+  let cached = jwksByUri.get(uri);
+  if (!cached) {
+    cached = createRemoteJWKSet(new URL(uri), {
       cacheMaxAge: 10 * 60_000,
       cooldownDuration: 30_000,
     });
-    sets.set(uri, s);
+    jwksByUri.set(uri, cached);
   }
-  return s;
+  return cached;
 }
 
 /**

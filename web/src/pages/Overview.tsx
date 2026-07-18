@@ -15,16 +15,16 @@ function Kpi({ label, value }: { label: string; value: string }) {
 }
 
 export default function Overview() {
-  const { data: ov } = usePoll(api.overview);
+  const { data: overview } = usePoll(api.overview);
   const { data: series } = usePoll(api.timeseries);
 
   // The real bearer, fetched from the identity you are signed in as. The old "mint a mock token"
   // control is gone: it produced an alg:none token the gateway now REJECTS, and on the public site
   // its request path collided with the real auth service and 404'd — a button that looked like it
   // worked and never could.
-  const [tok, setTok] = useState<string | null>(null);
+  const [bearer, setBearer] = useState<string | null>(null);
   useEffect(() => {
-    if (isSignedIn()) void authToken().then(setTok);
+    if (isSignedIn()) void authToken().then(setBearer);
   }, []);
 
   const chartData = (series ?? []).map((p) => ({
@@ -39,16 +39,16 @@ export default function Overview() {
 
       <Grid narrow style={{ marginBottom: '1.5rem' }}>
         <Column sm={2} md={2} lg={3}>
-          <Kpi label="Total tool calls" value={String(ov?.totalCalls ?? '—')} />
+          <Kpi label="Total tool calls" value={String(overview?.totalCalls ?? '—')} />
         </Column>
         <Column sm={2} md={2} lg={3}>
-          <Kpi label="Unique users" value={String(ov?.uniqueUsers ?? '—')} />
+          <Kpi label="Unique users" value={String(overview?.uniqueUsers ?? '—')} />
         </Column>
         <Column sm={2} md={2} lg={3}>
-          <Kpi label="Active servers" value={String(ov?.activeServers ?? '—')} />
+          <Kpi label="Active servers" value={String(overview?.activeServers ?? '—')} />
         </Column>
         <Column sm={2} md={2} lg={3}>
-          <Kpi label="Error rate" value={ov ? `${(ov.errorRate * 100).toFixed(1)}%` : '—'} />
+          <Kpi label="Error rate" value={overview ? `${(overview.errorRate * 100).toFixed(1)}%` : '—'} />
         </Column>
       </Grid>
 
@@ -72,13 +72,13 @@ export default function Overview() {
           Point an MCP client at <code>{mcpEndpoint()}/&lt;slug&gt;</code> and send your bearer token in the{' '}
           <code>Authorization</code> header.
         </p>
-        {isSignedIn() && tok ? (
+        {isSignedIn() && bearer ? (
           <>
             <p style={{ color: 'var(--cds-text-secondary)', marginBottom: '0.5rem', fontSize: '0.8rem' }}>
               Your token as <strong>{current()?.username}</strong> — expires in 24h; sign in again to refresh.
             </p>
             <CodeSnippet type="multi" feedback="Copied">
-              {`Authorization: Bearer ${tok}`}
+              {`Authorization: Bearer ${bearer}`}
             </CodeSnippet>
           </>
         ) : (

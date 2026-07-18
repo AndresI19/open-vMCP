@@ -62,7 +62,7 @@ export interface ToolInfo {
   enabled: boolean;
 }
 
-export interface AggTool {
+export interface AggregateTool {
   serverId: string;
   serverSlug: string;
   serverEnabled: boolean;
@@ -114,6 +114,19 @@ async function get<T>(path: string): Promise<T> {
   if (!r.ok) throw new Error(`${path} → ${r.status}`);
   return (await r.json()) as T;
 }
+// The write-denied toasts, in one place so the copy can't drift between the pre-flight short-circuit
+// and the server's own 401/403 response.
+const NEEDS_ADMIN_TOAST = {
+  kind: 'error',
+  title: 'Not allowed',
+  subtitle: 'Changing the registry needs an admin. You are signed in without that role.',
+} as const;
+const SIGN_IN_TOAST = {
+  kind: 'error',
+  title: 'Sign in first',
+  subtitle: 'Sign in (top-right) to make changes.',
+} as const;
+
 /**
  * Every MUTATION goes through here, attaching the bearer in one place. Reads deliberately don't carry
  * one — the server keeps reads open. Hiding controls from a non-admin is a courtesy; the defence is
@@ -125,19 +138,7 @@ const send = async (path: string, init: RequestInit = {}): Promise<Response> => 
   // here keeps an unauthorized click INERT — a notification, no fetch, no re-render. The server is
   // still the lock; this is a courtesy for the person clicking.
   if (!isAdmin()) {
-    notify(
-      isSignedIn()
-        ? {
-            kind: 'error',
-            title: 'Not allowed',
-            subtitle: 'Changing the registry needs an admin. You are signed in without that role.',
-          }
-        : {
-            kind: 'error',
-            title: 'Sign in first',
-            subtitle: 'Sign in (top-right) to make changes.',
-          },
-    );
+    notify(isSignedIn() ? NEEDS_ADMIN_TOAST : SIGN_IN_TOAST);
     return new Response(null, { status: isSignedIn() ? 403 : 401 });
   }
 
@@ -148,22 +149,28 @@ const send = async (path: string, init: RequestInit = {}): Promise<Response> => 
   // Defence in depth: a token that expired between render and click, or a claim the server no longer
   // honours, still surfaces here rather than failing silently.
   if (res.status === 403) {
-    notify({
-      kind: 'error',
-      title: 'Not allowed',
-      subtitle: 'Changing the registry needs an admin. You are signed in without that role.',
-    });
+    notify(NEEDS_ADMIN_TOAST);
   } else if (res.status === 401) {
-    notify({
-      kind: 'error',
-      title: isSignedIn() ? 'Session expired' : 'Sign in first',
-      subtitle: isSignedIn()
-        ? 'Your token has expired — sign in again from the top-right.'
-        : 'Sign in (top-right) to make changes.',
-    });
+    notify(
+      isSignedIn()
+        ? {
+            kind: 'error',
+            title: 'Session expired',
+            subtitle: 'Your token has expired — sign in again from the top-right.',
+          }
+        : SIGN_IN_TOAST,
+    );
   }
   return res;
 };
+
+/** A write with a JSON body — the content-type + JSON.stringify frame every mutation shares. */
+const sendJson = (path: string, method: string, body: unknown): Promise<Response> =>
+  send(path, {
+    method,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 
 export const api = {
   overview: () => get<Overview>('/api/stats/overview'),
@@ -172,43 +179,20 @@ export const api = {
   servers: () => get<ServerRow[]>('/api/servers'),
   users: () => get<UserRow[]>('/api/users'),
   calls: (limit = 100) => get<CallRow[]>(`/api/calls?limit=${limit}`),
-  createServer: (body: Record<string, unknown>) =>
-    send('/api/servers', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    }),
-  patchServer: (id: string, body: Record<string, unknown>) =>
-    send(`/api/servers/${id}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    }),
+  createServer: (body: Record<string, unknown>) => sendJson('/api/servers', 'POST', body),
+  patchServer: (id: string, body: Record<string, unknown>) => sendJson(`/api/servers/${id}`, 'PATCH', body),
   deleteServer: (id: string) => send(`/api/servers/${id}`, { method: 'DELETE' }),
   /** Master switch: enable/disable every registered server in one write. */
-  setAllServersEnabled: (enabled: boolean) =>
-    send('/api/servers', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ enabled }),
-    }),
+  setAllServersEnabled: (enabled: boolean) => sendJson('/api/servers', 'PATCH', { enabled }),
   server: (id: string) => get<ServerRow>(`/api/servers/${id}`),
   serverTools: (id: string) => get<{ tools: ToolInfo[] }>(`/api/servers/${id}/tools`),
   setToolEnabled: (id: string, tool: string, enabled: boolean) =>
-    send(`/api/servers/${id}/tools/${encodeURIComponent(tool)}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ enabled }),
-    }),
+    sendJson(`/api/servers/${id}/tools/${encodeURIComponent(tool)}`, 'PATCH', { enabled }),
   /** Master switch: enable/disable many of one server's tools in one write. */
   setServerToolsEnabled: (id: string, tools: string[], enabled: boolean) =>
-    send(`/api/servers/${id}/tools`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ enabled, tools }),
-    }),
+    sendJson(`/api/servers/${id}/tools`, 'PATCH', { enabled, tools }),
   callsForServer: (id: string, limit = 100) => get<CallRow[]>(`/api/calls?serverId=${id}&limit=${limit}`),
-  allTools: () => get<{ tools: AggTool[]; errors: { slug: string; error: string }[] }>('/api/tools'),
+  allTools: () => get<{ tools: AggregateTool[]; errors: { slug: string; error: string }[] }>('/api/tools'),
 };
 
 /** Poll a fetcher on an interval; returns latest data, error, and a manual refresh. */

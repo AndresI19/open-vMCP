@@ -14,23 +14,31 @@ function rpcError(message: string, code = -32000) {
   return { jsonrpc: '2.0' as const, error: { code, message }, id: null };
 }
 
-export const mcpRouter = Router();
-
-// Aggregate endpoint: `/mcp` with no slug, fronting every visible server at once. Reachable without
-// a bearer — see buildAggregateServer for the auth boundary (listing is open, calling is not).
-
-mcpRouter.post('/', async (req: Request, res: Response) => {
+/**
+ * Session preconditions shared by both POST handlers. Reuses a live session that belongs to
+ * `expectedSlug` (null = the aggregate endpoint), rejects a stale id (404 → reinitialize) or a
+ * request that carries no id yet isn't an initialize (400). Returns true when it has already
+ * answered `res` — reuse or reject — so the caller must stop; false when the caller should open a
+ * fresh session. Keeping the shared frames here stops the two handlers' status codes and messages
+ * from drifting apart.
+ */
+async function reuseOrGateSession(
+  req: Request,
+  res: Response,
+  expectedSlug: string | null,
+  mismatchMessage: string,
+): Promise<boolean> {
   const sid = req.headers['mcp-session-id'] as string | undefined;
 
   // Reuse an established session.
   if (sid && sessions.has(sid)) {
     const s = sessions.get(sid)!;
-    if (s.slug !== null) {
-      res.status(400).json(rpcError('Session does not belong to the aggregate endpoint'));
-      return;
+    if (s.slug !== expectedSlug) {
+      res.status(400).json(rpcError(mismatchMessage));
+      return true;
     }
     await s.transport.handleRequest(req, res, req.body);
-    return;
+    return true;
   }
 
   // An unrecognized session id means the session is gone (gateway restarted, or expired). MCP
@@ -38,12 +46,25 @@ mcpRouter.post('/', async (req: Request, res: Response) => {
   // "malformed", so a client that sent a well-formed frame keeps replaying the dead id forever.
   if (sid) {
     res.status(404).json(rpcError('Session not found; reinitialize to start a new session'));
-    return;
+    return true;
   }
 
   // No session id at all: only an initialize request may open one.
   if (!isInitializeRequest(req.body)) {
     res.status(400).json(rpcError('No valid session; expected an initialize request'));
+    return true;
+  }
+
+  return false;
+}
+
+export const mcpRouter = Router();
+
+// Aggregate endpoint: `/mcp` with no slug, fronting every visible server at once. Reachable without
+// a bearer — see buildAggregateServer for the auth boundary (listing is open, calling is not).
+
+mcpRouter.post('/', async (req: Request, res: Response) => {
+  if (await reuseOrGateSession(req, res, null, 'Session does not belong to the aggregate endpoint')) {
     return;
   }
 
@@ -110,30 +131,7 @@ mcpRouter.delete('/', (req: Request, res: Response) => handleSessionRequest(req,
 // POST carries initialize + all JSON-RPC requests.
 mcpRouter.post('/:slug', requireIdentity, async (req: Request, res: Response) => {
   const slug = String(req.params.slug);
-  const sid = req.headers['mcp-session-id'] as string | undefined;
-
-  // Reuse an established session.
-  if (sid && sessions.has(sid)) {
-    const s = sessions.get(sid)!;
-    if (s.slug !== slug) {
-      res.status(400).json(rpcError('Session does not belong to this server'));
-      return;
-    }
-    await s.transport.handleRequest(req, res, req.body);
-    return;
-  }
-
-  // An unrecognized session id means the session is gone (gateway restarted, or expired). MCP
-  // mandates 404 so a compliant client discards the id and re-initializes; a 400 reads as
-  // "malformed", so a client that sent a well-formed frame keeps replaying the dead id forever.
-  if (sid) {
-    res.status(404).json(rpcError('Session not found; reinitialize to start a new session'));
-    return;
-  }
-
-  // No session id at all: only an initialize request may open one.
-  if (!isInitializeRequest(req.body)) {
-    res.status(400).json(rpcError('No valid session; expected an initialize request'));
+  if (await reuseOrGateSession(req, res, slug, 'Session does not belong to this server')) {
     return;
   }
 

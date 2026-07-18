@@ -17,6 +17,12 @@ export interface ProxyContext {
   sessionId: () => string | null;
 }
 
+/** Shape a tool-call failure the MCP client sees: one text block, flagged isError. */
+export const errorResult = (text: string): CallToolResult => ({
+  content: [{ type: 'text', text }],
+  isError: true,
+});
+
 /** Longest result-preview stored for the dashboard; longer text is truncated with an ellipsis. */
 const PREVIEW_MAX_CHARS = 2000;
 
@@ -24,10 +30,7 @@ const PREVIEW_MAX_CHARS = 2000;
 export function previewText(result: CallToolResult): string | undefined {
   const content = result.content;
   if (!Array.isArray(content)) return undefined;
-  const text = content
-    .filter((c) => c.type === 'text')
-    .map((c) => (c as { text: string }).text)
-    .join('\n');
+  const text = content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join('\n');
   if (!text) return undefined;
   return text.length > PREVIEW_MAX_CHARS ? `${text.slice(0, PREVIEW_MAX_CHARS)}…` : text;
 }
@@ -79,10 +82,7 @@ export function buildProxyServer(ctx: ProxyContext): Server {
       console.log(
         `[tools/call] ${ctx.server.slug}/${toolName} user=${ctx.externalUserId ?? '-'} status=blocked`,
       );
-      return {
-        content: [{ type: 'text', text: `Tool "${toolName}" is disabled by the gateway.` }],
-        isError: true,
-      };
+      return errorResult(`Tool "${toolName}" is disabled by the gateway.`);
     }
 
     try {

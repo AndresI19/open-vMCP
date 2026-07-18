@@ -10,7 +10,7 @@ import { type ServerRow, allServers, visibleServers } from '../registry/index.js
 import { disabledToolNames } from '../registry/tools.js';
 import { fanOutServers } from './fanout.js';
 import { NS, matchQualified, qualify } from './naming.js';
-import { previewText } from './proxy.js';
+import { errorResult, previewText } from './proxy.js';
 import { recordToolCall } from './telemetry.js';
 import { UPSTREAM_TIMEOUT_MS, connectUpstream, withTimeout } from './upstream.js';
 
@@ -22,7 +22,7 @@ export { NS };
  * Collapse newlines/tabs in a user-controlled value before it reaches a log line, so a crafted value
  * can't forge log entries (CWE-117, log injection). Every dynamic value logged below passes through.
  */
-const s1 = (v: unknown): string => String(v ?? '').replace(/[\n\r\t]/g, ' ');
+const logSafe = (v: unknown): string => String(v ?? '').replace(/[\n\r\t]/g, ' ');
 
 export interface AggregateTool extends Tool {
   /** Which upstream this tool came from, before the name was qualified. */
@@ -87,17 +87,57 @@ async function resolveQualifiedUnfiltered(
 }
 
 /**
+ * Explain a call whose qualified name resolveQualified() could not match. A miss has two causes the
+ * caller must be told apart. Disabled: the client holds a stale catalog — say so (and record the
+ * policy block), or it retries as if mistyped. Not-permitted (once RBAC lands) or absent both stay
+ * "unknown", so the error never confirms a server the caller can't see.
+ */
+async function explainUnresolvedCall(
+  ctx: AggregateContext,
+  qualified: string,
+  args: Record<string, unknown>,
+  requestedAt: Date,
+): Promise<CallToolResult> {
+  const hidden = await resolveQualifiedUnfiltered(qualified);
+  if (hidden && !hidden.server.enabled) {
+    await recordToolCall({
+      serverId: hidden.server.id,
+      externalUserId: ctx.userId,
+      sessionId: ctx.sessionId(),
+      toolName: hidden.toolName,
+      args,
+      status: 'blocked',
+      errorMessage: 'server disabled by gateway policy',
+      latencyMs: 0,
+      requestedAt,
+    });
+    console.log(
+      `[aggregate tools/call] ${logSafe(hidden.server.slug)}/${logSafe(hidden.toolName)} ` +
+        `user=${logSafe(ctx.userId ?? '-')} status=blocked (server disabled)`,
+    );
+    return errorResult(
+      `Tool "${hidden.toolName}" is unavailable: server "${hidden.server.slug}" is disabled by the gateway. This is a policy block, not a bad tool name — re-listing tools will not return it.`,
+    );
+  }
+
+  console.log(
+    `[aggregate tools/call] ${logSafe(qualified)} user=${logSafe(ctx.userId ?? '-')} status=unknown`,
+  );
+  return errorResult(`Unknown tool "${qualified}". Expected a qualified name like "<server>${NS}<tool>".`);
+}
+
+/**
  * tools/list handler body: build the flattened, namespaced catalog for the aggregate endpoint.
  * Reading the catalog is open (no identity gate) so a client can discover what the gateway fronts.
  */
 async function handleListTools(ctx: AggregateContext): Promise<{ tools: Tool[] }> {
   const { tools, errors } = await collectTools(ctx.userId, ctx.bearer);
   for (const e of errors) {
-    console.warn(`[aggregate tools/list] skipped ${s1(e.slug)}: ${s1(e.error)}`);
+    console.warn(`[aggregate tools/list] skipped ${logSafe(e.slug)}: ${logSafe(e.error)}`);
   }
   console.log(
     `[aggregate tools/list] → ${tools.length} tools from ${new Set(tools.map((t) => t.serverSlug)).size} servers ` +
-      `(user=${s1(ctx.userId ?? '-')})`,
+      `(user=${logSafe(ctx.userId ?? '-')})`,
   );
   // serverSlug is gateway bookkeeping, not part of the MCP Tool shape.
   return { tools: tools.map(({ serverSlug: _slug, ...tool }) => tool) };
@@ -117,62 +157,14 @@ async function handleToolCall(
   const start = performance.now();
 
   if (!ctx.userId && identityRequired()) {
-    console.log(`[aggregate tools/call] ${s1(qualified)} user=- status=unauthorized`);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Calling "${qualified}" requires a bearer token. The aggregate catalog is readable anonymously, but tool execution is not. Send a signed identity as "Authorization: Bearer <token>".`,
-        },
-      ],
-      isError: true,
-    };
+    console.log(`[aggregate tools/call] ${logSafe(qualified)} user=- status=unauthorized`);
+    return errorResult(
+      `Calling "${qualified}" requires a bearer token. The aggregate catalog is readable anonymously, but tool execution is not. Send a signed identity as "Authorization: Bearer <token>".`,
+    );
   }
 
   const resolved = await resolveQualified(ctx.userId, qualified);
-  if (!resolved) {
-    // A miss has two causes the caller must be told apart. Disabled: the client holds a stale
-    // catalog — say so, or it retries as if mistyped. Not-permitted (once RBAC lands) or absent both
-    // stay "unknown", so the error never confirms a server the caller can't see.
-    const hidden = await resolveQualifiedUnfiltered(qualified);
-    if (hidden && !hidden.server.enabled) {
-      await recordToolCall({
-        serverId: hidden.server.id,
-        externalUserId: ctx.userId,
-        sessionId: ctx.sessionId(),
-        toolName: hidden.toolName,
-        args,
-        status: 'blocked',
-        errorMessage: 'server disabled by gateway policy',
-        latencyMs: 0,
-        requestedAt,
-      });
-      console.log(
-        `[aggregate tools/call] ${s1(hidden.server.slug)}/${s1(hidden.toolName)} ` +
-          `user=${s1(ctx.userId ?? '-')} status=blocked (server disabled)`,
-      );
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Tool "${hidden.toolName}" is unavailable: server "${hidden.server.slug}" is disabled by the gateway. This is a policy block, not a bad tool name — re-listing tools will not return it.`,
-          },
-        ],
-        isError: true,
-      };
-    }
-
-    console.log(`[aggregate tools/call] ${s1(qualified)} user=${s1(ctx.userId ?? '-')} status=unknown`);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Unknown tool "${qualified}". Expected a qualified name like "<server>${NS}<tool>".`,
-        },
-      ],
-      isError: true,
-    };
-  }
+  if (!resolved) return explainUnresolvedCall(ctx, qualified, args, requestedAt);
   const { server: row, toolName } = resolved;
 
   // Gateway policy: refuse disabled tools before touching the upstream.
@@ -190,12 +182,9 @@ async function handleToolCall(
       requestedAt,
     });
     console.log(
-      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=blocked`,
+      `[aggregate tools/call] ${logSafe(row.slug)}/${logSafe(toolName)} user=${logSafe(ctx.userId ?? '-')} status=blocked`,
     );
-    return {
-      content: [{ type: 'text', text: `Tool "${toolName}" is disabled by the gateway.` }],
-      isError: true,
-    };
+    return errorResult(`Tool "${toolName}" is disabled by the gateway.`);
   }
 
   let upstream: Awaited<ReturnType<typeof connectUpstream>>;
@@ -219,12 +208,9 @@ async function handleToolCall(
       requestedAt,
     });
     console.log(
-      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} status=error (${s1(message)})`,
+      `[aggregate tools/call] ${logSafe(row.slug)}/${logSafe(toolName)} user=${logSafe(ctx.userId ?? '-')} status=error (${logSafe(message)})`,
     );
-    return {
-      content: [{ type: 'text', text: `Upstream connect failed: ${message}` }],
-      isError: true,
-    };
+    return errorResult(`Upstream connect failed: ${message}`);
   }
 
   try {
@@ -250,7 +236,7 @@ async function handleToolCall(
     });
 
     console.log(
-      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
+      `[aggregate tools/call] ${logSafe(row.slug)}/${logSafe(toolName)} user=${logSafe(ctx.userId ?? '-')} ` +
         `status=${isError ? 'error' : 'ok'} ${latencyMs}ms`,
     );
     return result;
@@ -268,8 +254,8 @@ async function handleToolCall(
       requestedAt,
     });
     console.log(
-      `[aggregate tools/call] ${s1(row.slug)}/${s1(toolName)} user=${s1(ctx.userId ?? '-')} ` +
-        `status=error ${latencyMs}ms (${s1(err instanceof Error ? err.message : String(err))})`,
+      `[aggregate tools/call] ${logSafe(row.slug)}/${logSafe(toolName)} user=${logSafe(ctx.userId ?? '-')} ` +
+        `status=error ${latencyMs}ms (${logSafe(err instanceof Error ? err.message : String(err))})`,
     );
     throw err;
   } finally {
